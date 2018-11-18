@@ -28,3 +28,28 @@ bpftool is nice:
 2. `cd <source>/tools/bpf/bpftool/`
 3. `make`
 4. copy `bpftool` to whereever you put binaries
+
+Programming
+---
+Writing for the bpf target is not like normal programming.  Some things to keep
+in mind:
+
+1. The verifier might yell at you.  The error messages are often anoying, but
+they often mean you need to add explicit bounds checks and make sure variables
+are initialized.  Even if you know the code is correct, you need to "prove it"
+2. No loops.  If you have a "loop" with a constant size, you can add `#pragma
+unroll` on the line before it.  Keep in mind that this will tell the compiler
+to unroll it, so it may take up a lot of space
+3. No function calls.  We have "function calls" by adding `static
+__always_inline` before every function.  Instead of function calls, it just
+copies the whole function body to the call location
+
+Debugging
+---
+You can get the compiled bytecode by running `make dump`.  This calls
+`llvm-objdump` on the object file, and includes the source lines above assembly
+lines (as long as you leave `-g` in the CFLAGS)
+
+You can list the maps with `bpftool map`, and dump the contents of a map with
+`bpftool map dump id <id>`.  
+TODO: make a tool to pin maps and read them more easily
