@@ -11,7 +11,7 @@
 #include <linux/tcp.h>
 #include <linux/udp.h>
 
-#define LOOP_NUM 16
+#define NUM_HASHES 8
 
 #define DEBUG 1
 #ifdef  DEBUG
@@ -86,27 +86,51 @@ struct five_tuple {
 	uint8_t proto;
 };
 
-/* A simple hash function
+/* A simple hash function, based on rs hash here: http://www.partow.net/programming/hashfunctions/
+ * Splits up ip addrs into two 16 bit uints and starts with k as a seed
+ * Returns a 16 bit uint
  * TODO: make it better
  */
 static __always_inline
-uint64_t hash(uint16_t host, uint8_t k, struct five_tuple *ft) {
-    // a b and c are random 64 bit primes
-    uint64_t a = 0x087fa1804f5947cb;
-    uint64_t b = 0xec435baec5a8aae1;
-    uint64_t c = 0x807e270477f25ad3;
+uint16_t hash(uint16_t host, uint8_t k, struct five_tuple *ft) {
+    uint32_t a = 63689;
+    uint32_t b = 378551;
 
-    uint64_t one = (uint64_t)(ft->saddr) << 32 | (ft->daddr);
+    uint16_t saddr1 = (uint16_t)(ft->saddr >> 16);
+    uint16_t saddr2 = (uint16_t)(ft->saddr & 0x0000ffff);
+    uint16_t daddr1 = (uint16_t)(ft->daddr >> 16);
+    uint16_t daddr2 = (uint16_t)(ft->daddr & 0x0000ffff);
 
-    uint32_t two_one = (uint32_t)(ft->sport) << 16 | (ft->dport);
-    uint16_t two_two_one = (uint16_t)(ft->proto) << 8 | k;
-    uint32_t two_two = (uint32_t)two_two_one << 16 | host;
-    
-    uint64_t two = (uint64_t)two_one << 32 | two_two;
+    uint32_t hash = k;
+    hash = hash * a + host;
+    a = a * b;
+    hash = hash * a + saddr1;
+    a = a * b;
+    hash = hash * a + saddr2;
+    a = a * b;
+    hash = hash * a + daddr1;
+    a = a * b;
+    hash = hash * a + daddr2;
+    a = a * b;
+    hash = hash * a + ft->sport;
+    a = a * b;
+    hash = hash * a + ft->dport;
+    a = a * b;
+    hash = hash * a + ft->proto;
 
-    uint64_t hash = (uint64_t)(a * one + b * two + c);
 
-    return hash;
+    // We've been doing math on a uint32, so xor the high and low bits together
+    uint16_t h1 = (uint16_t)(hash & 0x0000ffff);
+    uint16_t h2 = (uint16_t)(hash >> 16);
+    return h1 ^ h2;;
+}
+
+static __always_inline
+uint8_t hash8(uint16_t host, uint8_t k, struct five_tuple *ft) {
+    uint16_t h16 = hash(host, k, ft);
+    uint8_t h8 = h16 % UINT8_MAX;
+
+    return h8;
 }
 
 /* Parse ethernet headers
@@ -342,9 +366,12 @@ int xdp_pass(struct xdp_md *ctx)
 	increment_map(&sip_count, &ft.saddr);
 	increment_map(&dip_count, &ft.daddr);
 
-    // Calculate the packet hash
-    uint64_t h = hash(0x1010, 0x10, &ft);
-    bpf_debug("hash: 0x%lx\n", h);
+    uint8_t hashes[NUM_HASHES];
+#pragma unroll
+    for (int i=0; i<NUM_HASHES; i++) {
+        hashes[i] = hash8(0x1011, i, &ft);
+        bpf_debug("Hash %i: 0x%x\n", i, hashes[i]);
+    }
 
 	return XDP_PASS;
 }
