@@ -53,3 +53,15 @@ lines (as long as you leave `-g` in the CFLAGS)
 You can list the maps with `bpftool map`, and dump the contents of a map with
 `bpftool map dump id <id>`.  
 TODO: make a tool to pin maps and read them more easily
+
+hash function
+---
+`test-hash.c` exists to test the hash function.  `analyze.py` takes the output
+of that and produces an histogram.
+
+Usage:
+1. `make test-hash`
+2. `./test-hash saddr-start saddr-end daddr-start daddr-end sport-start sport-end dport-start dport-end proto-start proto-end hostnonce-start hostnonce-end k-start k-end`
+ for example: `./test-hash 0x20000000 0x2000ffff 0x10000000 0x10000005 1230 1231 80 81 0 1 0 1 0 1 > ../hashes`
+3. `python3 -m venv venv; source venv/bin/activate; pip install -r requirements.txt`
+4. `./analyze.py ../hashes ../hashes.svg`
