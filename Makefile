@@ -15,7 +15,7 @@ unload:
 clean: unload
 	sudo rm /var/run/netns/h1
 
-setup:
+setup: clean
 	sudo ln -s /proc/$(shell pgrep -f h1)/ns/net /var/run/netns/h1
 
 dump: xdp-example.o

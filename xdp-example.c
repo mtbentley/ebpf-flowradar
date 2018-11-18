@@ -28,11 +28,13 @@
 #define bpf_debug(fmt, ...) { } while (0)
 #endif
 
+/* vlan header.  Not often used (or well tested) */
 struct vlan_hdr {
 	__be16 h_vlan_TCI;
 	__be16 h_vlan_encapsulated_proto;
 };
 
+/* A bunch of maps.  They are just counters for testing */
 struct bpf_map_def SEC("maps") eth_proto_count = {
 	.type = BPF_MAP_TYPE_HASH,
 	.key_size = sizeof(uint16_t),
@@ -75,11 +77,7 @@ struct bpf_map_def SEC("maps") dip_count = {
 	.max_entries = 64,
 };
 
-struct ports {
-	uint16_t sport;
-	uint16_t dport;
-};
-
+/* Information on the "five tuple" used to identify flows */
 struct five_tuple {
 	__be32 saddr;
 	__be32 daddr;
@@ -88,6 +86,9 @@ struct five_tuple {
 	uint8_t proto;
 };
 
+/* A simple hash function
+ * TODO: make it better
+ */
 static __always_inline
 uint64_t hash(uint16_t host, uint8_t k, struct five_tuple *ft) {
     // a b and c are random 64 bit primes
@@ -108,6 +109,10 @@ uint64_t hash(uint16_t host, uint8_t k, struct five_tuple *ft) {
     return hash;
 }
 
+/* Parse ethernet headers
+ * Takes the header and end location, and puts the proto and l3_offset in
+ * the proper params.  l3_offset is the location of the next header (likely ip)
+ */
 static __always_inline
 int16_t parse_eth(struct ethhdr *eth, void *data_end, uint16_t *eth_proto,
 		uint64_t *l3_offset)
@@ -116,6 +121,8 @@ int16_t parse_eth(struct ethhdr *eth, void *data_end, uint16_t *eth_proto,
 	uint64_t offset;
 
 	offset = sizeof(*eth);
+    // this test is neede to satisfy the verifier, so it knows we won't do any
+    // out of bounds accesses
 	if ((void *)eth + offset > data_end)
 		return -1;
 
@@ -144,11 +151,17 @@ int16_t parse_eth(struct ethhdr *eth, void *data_end, uint16_t *eth_proto,
 		eth_type = vlan2->h_vlan_encapsulated_proto;
 	}
 
+    // ntohs converts network byteorder to host byteorder (for 16 bit value)
 	*eth_proto = ntohs(eth_type);
 	*l3_offset = offset;
 	return 0;
 }
 
+/* Parse an ipv4 header
+ * Takes the context and l3 offset and outputs the proto and l4_offset, and
+ * puts the source and dast addrs in ft
+ * l4_offset is the location in ctx of the next header (tcp, udp, icmp, etc)
+ */
 static __always_inline
 int16_t parse_ipv4(struct xdp_md *ctx, uint64_t l3_offset, uint16_t *ip_proto,
 		uint32_t *l4_offset, struct five_tuple *ft)
@@ -160,26 +173,35 @@ int16_t parse_ipv4(struct xdp_md *ctx, uint64_t l3_offset, uint16_t *ip_proto,
 
 	offset = l3_offset + sizeof(*iph);
 
+    // We need to satisfy that the header start is in the packet
 	if (data + l3_offset > data_end)
 		return -1;
 
+    // We need to satisfy that the header end is in the packet
 	if ((void *)iph + sizeof(*iph) > data_end)
 		return -1;
 
 	uint8_t hdr_len = iph->ihl;
 
+    // ihl cannot be less than 5 (20 bytes)
 	if (hdr_len < 5)
 		return -1;
 
 	int32_t data_len = data_end - (void *)iph;
 
 	uint16_t tot_len = ntohs(iph->tot_len);
+    // The header length can't be less than 20 bytes
 	if (tot_len < 20)
 		return -1;
 
+    // Warn if the data len (calculated from the data end) is different from
+    // what's expected from the header
 	if (data_len != tot_len) {
 		bpf_debug("WARN: packet end does not match total length\n");
 	}
+
+    // Satisfy the verifier that ihl is in this range
+    // TODO: is this necessary?
 	uint8_t ihl = (iph->ihl);
 	if (ihl < 5)
 		ihl = 5;
@@ -196,12 +218,17 @@ int16_t parse_ipv4(struct xdp_md *ctx, uint64_t l3_offset, uint16_t *ip_proto,
 }
 
 
+/* Parse tcp and udp packets
+ * This was multiple functions, but the verifier didn't like it
+ * Takes cts, the proto, and the l4_offset, and puts the sport and dport in ft
+ */
 static __always_inline
 int16_t parse_tcp_udp(struct xdp_md *ctx, uint16_t proto, uint32_t l4_offset, struct five_tuple *ft)
 {
 	void *data_end = (void *)(long)ctx->data_end;
 	void *data = (void *)(long)ctx->data;
 
+    // Satisfy that the header start in in data
 	if (data + l4_offset > data_end) {
 		bpf_debug("Packet l4_offset outside data_end\n");
 		return -1;
@@ -209,6 +236,7 @@ int16_t parse_tcp_udp(struct xdp_md *ctx, uint16_t proto, uint32_t l4_offset, st
 	if (proto == IPPROTO_TCP) {
 		struct tcphdr *thdr = data + l4_offset;
 
+        // Satisfy that the header end is in data
 		if ((void *)thdr + sizeof(*thdr) > data_end) {
 			bpf_debug("TCP Packet header ends outside data_end\n");
 			return -1;
@@ -220,6 +248,7 @@ int16_t parse_tcp_udp(struct xdp_md *ctx, uint16_t proto, uint32_t l4_offset, st
 	} else if (proto == IPPROTO_UDP) {
 		struct udphdr *uhdr = data + l4_offset;
 
+        // Satisfy that the header end is in the data
 		if ((void *)uhdr + sizeof(*uhdr) > data_end) {
 			bpf_debug("UPD Packet header ends outside data_end\n");
 			return -1;
@@ -233,7 +262,9 @@ int16_t parse_tcp_udp(struct xdp_md *ctx, uint16_t proto, uint32_t l4_offset, st
 	return -1;
 }
 
-
+/* Increment a map value at key
+ * if the key is not in the map, initialize it to 1
+ */
 static __always_inline
 void increment_map(struct bpf_map_def *map, void *key)
 {
@@ -248,6 +279,9 @@ void increment_map(struct bpf_map_def *map, void *key)
 	}
 }
 
+/* The main program.
+ * TODO: rename this?
+ */
 SEC("prog")
 int xdp_pass(struct xdp_md *ctx)
 {
@@ -274,6 +308,7 @@ int xdp_pass(struct xdp_md *ctx)
 			parse_ip = parse_ipv4(ctx, l3_offset, &ip_proto, &l4_offset, &ft);
 			break;
 		case ETH_P_IPV6:
+            // TODO: IPv6 support?
 		case ETH_P_ARP:
 		default:
 			return XDP_PASS;
@@ -307,6 +342,7 @@ int xdp_pass(struct xdp_md *ctx)
 	increment_map(&sip_count, &ft.saddr);
 	increment_map(&dip_count, &ft.daddr);
 
+    // Calculate the packet hash
     uint64_t h = hash(0x1010, 0x10, &ft);
     bpf_debug("hash: 0x%lx\n", h);
 
