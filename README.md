@@ -73,3 +73,65 @@ TODO
 - Investigate using `bpf_xdp_adjust_head` rather than l3/l4 offset (see 
 https://patchwork.ozlabs.org/patch/702198/ )
 - IPv6 support
+
+FlowRadar
+---
+The paper: https://www.usenix.org/system/files/conference/nsdi16/nsdi16-paper-li-yuliang.pdf
+
+XDP BPF side:
+- Bloom filter with m bits
+- Each packet (5-tuple) hashed to k (/m) bits in filter
+- Count Table: stores 5-tuple (13 bytes), flow count (2 bytes?), packet count
+(4 bytes?)
+- Each packet: for each of k hash results, increments packet count in count
+table
+- If Bloom filter indicates New Flow, store (table 5-tuple)xor(packet 5-tuple)
+in table 5-tuple and increment flow count for each of k hash results, and set
+all bits in bloom filter
+
+Bloom filter size: `m bits = (m/8) bytes`
+Count table size: `((13 + 2 + 4)*m) bytes`
+Hash result = `hash(packet, host-nonce, k) % m`
+
+host-nonce: per host magic number that's mixed into hash to provide different
+hashes per host (important for decoding flow counts)
+
+Random math
+---
+From wikipedia (https://en.wikipedia.org/wiki/Bloom\_filter):
+
+Optimal number of hash functions: `k=(m/n)ln(2)`  
+m: filter bits  
+n: number of flows  
+`ln(2) ~= 0.69 ~= 0.5` 
+
+minimum k: 1  
+given ^^, minimum m/n ratio: 2/1
+
+Reasonable memory maximum: 16MB  
+memory required ~= `m*20B` (B=bytes)  
+`16777216 = m*20`  
+`m = 838912`  
+Bloom filter bytes: 104864, `uint64_t`s: 13108 :o  
+
+max flows: 8192?  
+`k = (838912/8192)*0.69 ~= 71`  
+^^ is that too much? (Note that the current code does compile and load w/ k=71)
+
+Actual reasonable bloom filter size: `2**16 = UINT16_MAX+1` ==> ~1.25MB  
+`m = 65536`  
+Bloom filter bytes: 65536, `uint64_t`s: 1024
+
+max flows: 8192?  
+`k = (65536/8192)*ln(2) ~= 6`  
+^^ Much better, but maybe too few?
+
+Given 10Gb interface, 64byte minimum packet: max pps = 20971520 ~= 21,000,000  
+Time to process one packet: 1s/20971520 ~= 47ns :o  
+Modern CPU: 2Ghz = 2,000,000,000 inst/sec => ~95 instructions / packet :o
+
+Reasonable MTU: 1500 bytes  ==> pps = 894785 ~= 900,000  
+Time to process one packet: 1s/894785 ~= 1.1 microseconds  
+2Ghz CPU => ~2200 instructions / packet
+
+TODO: figure out the mapping from BPF instructions to CPU instructions?
