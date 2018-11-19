@@ -65,3 +65,11 @@ Usage:
  for example: `./test-hash 0x20000000 0x2000ffff 0x10000000 0x10000005 1230 1231 80 81 0 1 0 1 0 1 > ../hashes`
 3. `python3 -m venv venv; source venv/bin/activate; pip install -r requirements.txt`
 4. `./analyze.py ../hashes ../hashes.svg`
+
+TODO
+---
+- Figure out a better way to export maps to userspace
+- Implement flowradar - how to store the data we need to store?
+- Investigate using `bpf_xdp_adjust_head` rather than l3/l4 offset (see 
+https://patchwork.ozlabs.org/patch/702198/ )
+- IPv6 support
