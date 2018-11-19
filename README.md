@@ -89,8 +89,8 @@ table
 in table 5-tuple and increment flow count for each of k hash results, and set
 all bits in bloom filter
 
-Bloom filter size: `m bits = (m/8) bytes`
-Count table size: `((13 + 2 + 4)*m) bytes`
+Bloom filter size: `m bits = (m/8) bytes`  
+Count table size: `((13 + 2 + 4)*m) bytes`  
 Hash result = `hash(packet, host-nonce, k) % m`
 
 host-nonce: per host magic number that's mixed into hash to provide different
@@ -98,7 +98,7 @@ hashes per host (important for decoding flow counts)
 
 Random math
 ---
-From wikipedia (https://en.wikipedia.org/wiki/Bloom\_filter):
+From wikipedia (https://en.wikipedia.org/wiki/Bloom_filter):
 
 Optimal number of hash functions: `k=(m/n)ln(2)`  
 m: filter bits  
