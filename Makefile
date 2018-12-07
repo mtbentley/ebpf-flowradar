@@ -1,17 +1,24 @@
+# NOTE: this requires a kernel with tools/lib/bpf bulit (for libbpf.so)
 LINUX_SOURCE=../linux
 # ^^ is there a better way to do this??
+# Perhaps just copy the relevant files in?
 IFLAGS:=-I$(LINUX_SOURCE)/tools/lib -I$(LINUX_SOURCE)/tools/perf -I$(LINUX_SOURCE)/tools/include
 LDFLAGS:=-lelf
 
 CFLAGS:=-g -O2 -Wall -Wextra
-.PHONY: all load unload clean setup
+.PHONY: all load unload clean setup libbpf.so
 
 all: xdp-flowradar.o xdp-flowradar
+
+libbpf.so: $(LINUX_SOURCE)/tools/lib/bpf/libbpf.so
+
+$(LINUX_SOURCE)/tools/lib/bpf/libbpf.so:
+	make -C $(LINUX_SOURCE)/tools/lib/bpf/
 
 xdp-flowradar.o: xdp-flowradar_kern.c bpf_helpers.h
 	clang $(CFLAGS) -target bpf -c xdp-flowradar_kern.c -o xdp-flowradar.o
 
-xdp-flowradar: xdp-flowradar_user.c bpf_load.o xdp-flowradar.o
+xdp-flowradar: xdp-flowradar_user.c bpf_load.o xdp-flowradar.o libbpf.so
 	clang $(CFLAGS) $(IFLAGS) $(LDFLAGS) $(LINUX_SOURCE)/tools/lib/bpf/libbpf.so bpf_load.o xdp-flowradar_user.c -o xdp-flowradar
 
 
