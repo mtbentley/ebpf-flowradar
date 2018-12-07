@@ -308,7 +308,7 @@ void increment_map(struct bpf_map_def *map, void *key)
 /* The main program.
  * TODO: rename this?
  */
-SEC("prog")
+SEC("xdp")
 int xdp_pass(struct xdp_md *ctx)
 {
 	uint64_t l3_offset = 0;
