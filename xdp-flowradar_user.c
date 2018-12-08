@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include "bpf_load.h"
+#include "common.h"
 
 #include <linux/bpf.h>
 
@@ -15,20 +16,6 @@
 #include <libgen.h>
 #include <stdlib.h>
 
-
-/* Note: these need to be kept up to date (including the correct order) with
- * the maps in _kern.c
- * TODO: make a macro that does this automagically?
- */
-#define NUM_MAP_PINS 6
-static const char *map_pins[NUM_MAP_PINS] = {
-    "/sys/fs/bpf/eth_proto_count",
-    "/sys/fs/bpf/ip_proto_count",
-    "/sys/fs/bpf/sport_count",
-    "/sys/fs/bpf/dport_count",
-    "/sys/fs/bpf/sip_count",
-    "/sys/fs/bpf/dip_count",
-};
 
 #ifndef BPF_FS_MAGIC
 # define BPF_FS_MAGIC   0xcafe4a11
@@ -122,8 +109,8 @@ int main(int argc, char *argv[]) {
         if (bpf_obj_pin(map_fd[i], map_pins[i])) {
             fprintf(
                 stderr,
-                "ERR: Cannot pin map: err(%d):%s\n",
-                errno, strerror(errno)
+                "ERR: Cannot pin map %s: err(%d):%s\n",
+                map_pins[i], errno, strerror(errno)
             );
             return 1;
         }

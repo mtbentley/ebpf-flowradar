@@ -10,7 +10,7 @@ OBJECTS:=$(LINUX_SOURCE)/tools/lib/bpf/libbpf.so bpf_load.o
 CFLAGS:=-g -O2 -Wall -Wextra
 .PHONY: all load unload clean setup
 
-all: xdp-flowradar.o xdp-flowradar
+all: xdp-flowradar.o xdp-flowradar dump_maps
 
 $(LINUX_SOURCE)/tools/lib/bpf/libbpf.so:
 	make -C $(LINUX_SOURCE)/tools/lib/bpf/
@@ -18,9 +18,11 @@ $(LINUX_SOURCE)/tools/lib/bpf/libbpf.so:
 xdp-flowradar.o: xdp-flowradar_kern.c bpf_helpers.h
 	clang $(CFLAGS) -target bpf -c xdp-flowradar_kern.c -o xdp-flowradar.o
 
-xdp-flowradar: xdp-flowradar_user.c xdp-flowradar.o $(OBJECTS)
+xdp-flowradar: xdp-flowradar_user.c xdp-flowradar.o $(OBJECTS) common.h
 	clang $(CFLAGS) $(IFLAGS) $(LDFLAGS) $(OBJECTS) xdp-flowradar_user.c -o xdp-flowradar
 
+dump_maps: dump_maps.c common.h
+	clang $(CFLAGS) $(IFLAGS) $(LDFLAGS) $(OBJECTS) dump_maps.c -o dump_maps
 
 bpf_load.o: bpf_load.c bpf_load.h
 	clang $(CFLAGS) $(IFLAGS) -c bpf_load.c -o bpf_load.o
@@ -41,6 +43,7 @@ clean: unload
 	rm xdp-flowradar || true
 	rm bpf_load.o || true
 	sudo bash -c "rm /sys/fs/bpf/{{eth,ip}_proto,{s,d}{port,ip}}_count || true"
+	rm dump_mpas || true
 
 setup: clean
 	sudo ln -s /proc/$(shell pgrep -f h1)/ns/net /var/run/netns/h1
