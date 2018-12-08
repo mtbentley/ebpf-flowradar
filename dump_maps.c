@@ -17,11 +17,11 @@ void dump_hash(int map_fd) {
     while (bpf_map_get_next_key(map_fd, &key, &next_key) == 0) {
         key = next_key;
         if ((bpf_map_lookup_elem(map_fd, &key, &value)) != 0) {
-            /*fprintf(
+            fprintf(
                 stderr,
                 "ERR: failed to read key %x from map(%d): %s\n",
                 key, errno, strerror(errno)
-            );*/
+            );
         }
         if (value)
             printf("%x: %lu\n", key, value);
