@@ -13,6 +13,15 @@
 
 #define NUM_HASHES 8
 
+/* Disable 8021Q and 8021AD eth tags for now, since we don't really
+ * have a way to test them
+ */
+//#define ETHTAGS 1
+
+/* Enable debug output. Note that disabling this will get rid of a bunch of
+ * calls to bpf_trace_printk, and might result in a lot of code being
+ * optimized out
+ */
 #define DEBUG 1
 #ifdef  DEBUG
 /* Only use this for debug output. Notice output from bpf_trace_printk()
@@ -154,6 +163,7 @@ int16_t parse_eth(struct ethhdr *eth, void *data_end, uint16_t *eth_proto,
 
 	eth_type = eth->h_proto;
 
+#ifdef ETHTAGS
 	// ETH_P_8921Q is single tag, ETH_P_8021AD is double tag
 	if (eth_type == htons(ETH_P_8021Q) || eth_type == htons(ETH_P_8021AD)) {
 		struct vlan_hdr *vlan;
@@ -176,6 +186,7 @@ int16_t parse_eth(struct ethhdr *eth, void *data_end, uint16_t *eth_proto,
 
 		eth_type = vlan2->h_vlan_encapsulated_proto;
 	}
+#endif
 
 	// ntohs converts network byteorder to host byteorder (for 16 bit value)
 	*eth_proto = ntohs(eth_type);
