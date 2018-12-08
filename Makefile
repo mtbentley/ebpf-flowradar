@@ -40,7 +40,7 @@ clean: unload
 	rm test-hash || true
 	rm xdp-flowradar || true
 	rm bpf_load.o || true
-	sudo rm /sys/fs/bpf/bloomfilter1 || true
+	sudo bash -c "rm /sys/fs/bpf/{{eth,ip}_proto,{s,d}{port,ip}}_count || true"
 
 setup: clean
 	sudo ln -s /proc/$(shell pgrep -f h1)/ns/net /var/run/netns/h1

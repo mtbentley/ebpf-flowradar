@@ -12,7 +12,21 @@
 #include <net/if.h>
 #include <sched.h>
 
-static const char *bloomfilter1 = "/sys/fs/bpf/bloomfilter1";
+
+/* Note: these need to be kept up to date (including the correct order) with
+ * the maps in _kern.c
+ * TODO: make a macro that does this automagically?
+ */
+#define NUM_MAP_PINS 6
+static const char *map_pins[NUM_MAP_PINS] = {
+    "/sys/fs/bpf/eth_proto_count",
+    "/sys/fs/bpf/ip_proto_count",
+    "/sys/fs/bpf/sport_count",
+    "/sys/fs/bpf/dport_count",
+    "/sys/fs/bpf/sip_count",
+    "/sys/fs/bpf/dip_count",
+};
+
 
 int main(int argc, char *argv[]) {
     char filename[256];
@@ -50,14 +64,24 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // Try to pin the 0-th map_fd to the filesystem
-    if (bpf_obj_pin(map_fd[0], bloomfilter1)) {
-        fprintf(
-            stderr,
-            "ERR: Cannot pin map: err(%d):%s\n",
-            errno, strerror(errno)
-        );
-        return 1;
+    for (int i=0; i<NUM_MAP_PINS; i++) {
+        if (map_fd[i] <= 0) {
+            fprintf(
+                stderr,
+                "ERR: map %d(%s) failed to load: %d\n",
+                i, map_pins[i], map_fd[i]
+            );
+            return 1;
+        }
+        // Try to pin the i-th map_fd to the filesystem
+        if (bpf_obj_pin(map_fd[i], map_pins[i])) {
+            fprintf(
+                stderr,
+                "ERR: Cannot pin map: err(%d):%s\n",
+                errno, strerror(errno)
+            );
+            return 1;
+        }
     }
 
     nsfd = open(nspath, O_RDONLY);
