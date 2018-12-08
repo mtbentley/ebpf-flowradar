@@ -212,7 +212,7 @@ static int load_and_attach(const char *event, struct bpf_insn *prog, int size)
 	}
 
 	err = read(efd, buf, sizeof(buf));
-	if (err < 0 || err >= sizeof(buf)) {
+	if (err < 0 || (unsigned long)err >= sizeof(buf)) {
 		printf("read from '%s' failed '%s'\n", event, strerror(errno));
 		return -1;
 	}
@@ -332,7 +332,7 @@ static int parse_relo_and_apply(Elf_Data *data, Elf_Data *symbols,
 		GElf_Rel rel;
 		unsigned int insn_idx;
 		bool match = false;
-		int j, map_idx;
+		int map_idx;
 
 		gelf_getrel(data, i, &rel);
 
@@ -388,7 +388,6 @@ static int load_elf_maps_section(struct bpf_map_data *maps, int maps_shndx,
 	int i, nr_maps;
 	GElf_Sym *sym;
 	Elf_Scn *scn;
-	int copy_sz;
 
 	if (maps_shndx < 0)
 		return -EINVAL;
@@ -407,7 +406,7 @@ static int load_elf_maps_section(struct bpf_map_data *maps, int maps_shndx,
 
 	/* For each map get corrosponding symbol table entry */
 	sym = calloc(MAX_MAPS+1, sizeof(GElf_Sym));
-	for (i = 0, nr_maps = 0; i < symbols->d_size / sizeof(GElf_Sym); i++) {
+	for (i = 0, nr_maps = 0; (unsigned long)i < symbols->d_size / sizeof(GElf_Sym); i++) {
 		assert(nr_maps < MAX_MAPS+1);
 		if (!gelf_getsym(symbols, i, &sym[nr_maps]))
 			continue;
