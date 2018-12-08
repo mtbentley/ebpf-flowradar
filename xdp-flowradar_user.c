@@ -11,6 +11,9 @@
 #include <errno.h>
 #include <net/if.h>
 #include <sched.h>
+#include <sys/vfs.h>
+#include <libgen.h>
+#include <stdlib.h>
 
 
 /* Note: these need to be kept up to date (including the correct order) with
@@ -26,6 +29,45 @@ static const char *map_pins[NUM_MAP_PINS] = {
     "/sys/fs/bpf/sip_count",
     "/sys/fs/bpf/dip_count",
 };
+
+#ifndef BPF_FS_MAGIC
+# define BPF_FS_MAGIC   0xcafe4a11
+#endif
+
+// copied from https://github.com/netoptimizer/prototype-kernel/blob/72e473c723bc8dbc389b00d2ec631729444e4998/kernel/samples/bpf/xdp_ddos01_blacklist_user.c#L103
+/* Verify BPF-filesystem is mounted on given file path */
+static int bpf_fs_check_path(const char *path)
+{
+	struct statfs st_fs;
+	char *dname, *dir;
+	int err = 0;
+
+	if (path == NULL)
+		return -EINVAL;
+
+	dname = strdup(path);
+	if (dname == NULL)
+		return -ENOMEM;
+
+	dir = dirname(dname);
+	if (statfs(dir, &st_fs)) {
+		fprintf(stderr, "ERR: failed to statfs %s: (%d)%s\n",
+			dir, errno, strerror(errno));
+		err = -errno;
+	}
+	free(dname);
+
+	if (!err && st_fs.f_type != BPF_FS_MAGIC) {
+		fprintf(stderr,
+			"ERR: specified path %s is not on BPF FS\n\n"
+			" You need to mount the BPF filesystem type like:\n"
+			"  mount -t bpf bpf /sys/fs/bpf/\n\n",
+			path);
+		err = -EINVAL;
+	}
+
+	return err;
+}
 
 
 int main(int argc, char *argv[]) {
@@ -73,6 +115,9 @@ int main(int argc, char *argv[]) {
             );
             return 1;
         }
+        if (bpf_fs_check_path(map_pins[i]) < 0)
+            return 1;
+
         // Try to pin the i-th map_fd to the filesystem
         if (bpf_obj_pin(map_fd[i], map_pins[i])) {
             fprintf(
