@@ -8,6 +8,21 @@ Testing
 ---
 1. Run mininet: `sudo mn --topo tree,2,2`
 2. Setup the network namespace for h1: `make setup`
+3. Compile: `make`.  NOTE: this requires a checkout of the linux source at
+`../linux`.  You can override this with `make LINUX_SOURCE=/path/to/linux`
+4. Load the program: `sudo ./xdp-flowradar h1-eth0 /run/netns/h1`
+5. Monitor the output (from `bpf_debug()`): `sudo cat /sys/kernel/debug/tracing/trace_pipe`
+
+What this does: `make` builds the bpf program and the binary to load it.  
+The load program (`./xdp-flowradar`) loads the bpf program, pins the maps in
+`/sys/fs/bpf/<mapname>`, switches to the network namespace of the interface we
+want to attach to (`/run/netns/h1`), and attaches the program to the interface
+(`h1-eth0`).
+
+Testing (old way)
+---
+1. Run mininet: `sudo mn --topo tree,2,2`
+2. Setup the network namespace for h1: `make setup`
 3. Compile: `make`
 4. Load the program: `make load`. This is where you migth get verifier errors
 5. Monitor the output (from `bpf_debug()`): `sudo cat /sys/kernel/debug/tracing/trace_pipe`
@@ -22,6 +37,9 @@ sudo apt install -y build-essential libelf-dev binutils-dev make gcc \
 libssl-dev bc libelf-dev libcap-dev clang gcc-multilib llvm libncurses5-dev \
 git pkg-config libmnl0 bison flex graphviz mininet
 ```
+
+kernel source: You will need the kernel source checked out to `../linux` (or
+override it, as mentioned in the testing section).
 
 bpftool is nice:
 1. Get kernel source
