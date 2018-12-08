@@ -44,6 +44,7 @@ struct vlan_hdr {
 };
 
 /* A bunch of maps.  They are just counters for testing */
+// 0
 struct bpf_map_def SEC("maps") eth_proto_count = {
 	.type = BPF_MAP_TYPE_HASH,
 	.key_size = sizeof(uint16_t),
@@ -51,6 +52,7 @@ struct bpf_map_def SEC("maps") eth_proto_count = {
 	.max_entries = 64,
 };
 
+// 1
 struct bpf_map_def SEC("maps") ip_proto_count = {
 	.type = BPF_MAP_TYPE_HASH,
 	.key_size = sizeof(uint16_t),
@@ -58,6 +60,7 @@ struct bpf_map_def SEC("maps") ip_proto_count = {
 	.max_entries = 64,
 };
 
+// 2
 struct bpf_map_def SEC("maps") sport_count = {
 	.type = BPF_MAP_TYPE_HASH,
 	.key_size = sizeof(uint16_t),
@@ -65,6 +68,7 @@ struct bpf_map_def SEC("maps") sport_count = {
 	.max_entries = 64,
 };
 
+// 3
 struct bpf_map_def SEC("maps") dport_count = {
 	.type = BPF_MAP_TYPE_HASH,
 	.key_size = sizeof(uint16_t),
@@ -72,6 +76,7 @@ struct bpf_map_def SEC("maps") dport_count = {
 	.max_entries = 64,
 };
 
+// 4
 struct bpf_map_def SEC("maps") sip_count = {
 	.type = BPF_MAP_TYPE_HASH,
 	.key_size = sizeof(uint32_t),
@@ -79,6 +84,7 @@ struct bpf_map_def SEC("maps") sip_count = {
 	.max_entries = 64,
 };
 
+// 5
 struct bpf_map_def SEC("maps") dip_count = {
 	.type = BPF_MAP_TYPE_HASH,
 	.key_size = sizeof(uint32_t),

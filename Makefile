@@ -12,6 +12,9 @@ CFLAGS:=-g -O2 -Wall -Wextra
 
 all: xdp-flowradar.o xdp-flowradar dump_maps
 
+cjson/cJSON.o:
+	make -C cjson
+
 $(LINUX_SOURCE)/tools/lib/bpf/libbpf.so:
 	make -C $(LINUX_SOURCE)/tools/lib/bpf/
 
@@ -21,8 +24,8 @@ xdp-flowradar.o: xdp-flowradar_kern.c bpf_helpers.h
 xdp-flowradar: xdp-flowradar_user.c xdp-flowradar.o $(OBJECTS) common.h
 	clang $(CFLAGS) $(IFLAGS) $(LDFLAGS) $(OBJECTS) xdp-flowradar_user.c -o xdp-flowradar
 
-dump_maps: dump_maps.c common.h
-	clang $(CFLAGS) $(IFLAGS) $(LDFLAGS) $(OBJECTS) dump_maps.c -o dump_maps
+dump_maps: dump_maps.c common.h cjson/cJSON.o
+	clang $(CFLAGS) $(IFLAGS) $(LDFLAGS) $(OBJECTS) cjson/cJSON.o dump_maps.c -o dump_maps
 
 bpf_load.o: bpf_load.c bpf_load.h
 	clang $(CFLAGS) $(IFLAGS) -c bpf_load.c -o bpf_load.o
