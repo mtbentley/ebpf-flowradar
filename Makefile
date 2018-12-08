@@ -5,12 +5,12 @@ LINUX_SOURCE=../linux
 IFLAGS:=-I$(LINUX_SOURCE)/tools/lib -I$(LINUX_SOURCE)/tools/perf -I$(LINUX_SOURCE)/tools/include
 LDFLAGS:=-lelf
 
+OBJECTS:=$(LINUX_SOURCE)/tools/lib/bpf/libbpf.so bpf_load.o
+
 CFLAGS:=-g -O2 -Wall -Wextra
-.PHONY: all load unload clean setup libbpf.so
+.PHONY: all load unload clean setup
 
 all: xdp-flowradar.o xdp-flowradar
-
-libbpf.so: $(LINUX_SOURCE)/tools/lib/bpf/libbpf.so
 
 $(LINUX_SOURCE)/tools/lib/bpf/libbpf.so:
 	make -C $(LINUX_SOURCE)/tools/lib/bpf/
@@ -18,8 +18,8 @@ $(LINUX_SOURCE)/tools/lib/bpf/libbpf.so:
 xdp-flowradar.o: xdp-flowradar_kern.c bpf_helpers.h
 	clang $(CFLAGS) -target bpf -c xdp-flowradar_kern.c -o xdp-flowradar.o
 
-xdp-flowradar: xdp-flowradar_user.c bpf_load.o xdp-flowradar.o libbpf.so
-	clang $(CFLAGS) $(IFLAGS) $(LDFLAGS) $(LINUX_SOURCE)/tools/lib/bpf/libbpf.so bpf_load.o xdp-flowradar_user.c -o xdp-flowradar
+xdp-flowradar: xdp-flowradar_user.c xdp-flowradar.o $(OBJECTS)
+	clang $(CFLAGS) $(IFLAGS) $(LDFLAGS) $(OBJECTS) xdp-flowradar_user.c -o xdp-flowradar
 
 
 bpf_load.o: bpf_load.c bpf_load.h
