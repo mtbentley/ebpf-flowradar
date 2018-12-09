@@ -1,4 +1,4 @@
-#include "xdp-flowradar.c"
+#include "xdp-flowradar_kern.c"
 #include <stdio.h>
 #include <stdint.h>
 #include <linux/types.h>

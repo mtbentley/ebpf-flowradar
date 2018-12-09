@@ -30,7 +30,7 @@ dump_maps: dump_maps.c common.h cjson/cJSON.o
 bpf_load.o: bpf_load.c bpf_load.h
 	clang $(CFLAGS) $(IFLAGS) -c bpf_load.c -o bpf_load.o
 
-test-hash: test-hash.c xdp-flowradar.c
+test-hash: test-hash.c xdp-flowradar_kern.c
 	clang $(CFLAGS) test-hash.c -o test-hash
 
 load: xdp-flowradar.o unload

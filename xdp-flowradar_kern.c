@@ -128,31 +128,26 @@ struct bpf_map_def SEC("maps") host_info_map = {
  */
 static __always_inline
 uint16_t hash(uint16_t host, uint8_t k, struct five_tuple *ft) {
+    unsigned long i;
 	uint32_t a = 63689;
 	uint32_t b = 378551;
 
-	uint16_t saddr1 = (uint16_t)(ft->saddr >> 16);
-	uint16_t saddr2 = (uint16_t)(ft->saddr & 0x0000ffff);
-	uint16_t daddr1 = (uint16_t)(ft->daddr >> 16);
-	uint16_t daddr2 = (uint16_t)(ft->daddr & 0x0000ffff);
+    char *ptr = (void *)ft;
 
 	uint32_t hash = k;
-	hash = hash * a + host;
-	a = a * b;
-	hash = hash * a + saddr1;
-	a = a * b;
-	hash = hash * a + saddr2;
-	a = a * b;
-	hash = hash * a + daddr1;
-	a = a * b;
-	hash = hash * a + daddr2;
-	a = a * b;
-	hash = hash * a + ft->sport;
-	a = a * b;
-	hash = hash * a + ft->dport;
-	a = a * b;
-	hash = hash * a + ft->proto;
+#pragma unroll
+    for (i=0; i<sizeof(struct five_tuple); i++) {
+        ptr = (void *)ft + i;
+        hash = hash * a + *ptr;
+        a = a * b;
+    }
 
+#pragma unroll
+    for (i=0; i<sizeof(uint16_t); i++) {
+        ptr = (void *)&host + i;
+        hash = hash * a + *ptr;
+        a = a * b;
+    }
 
 	// We've been doing math on a uint32, so xor the high and low bits together
 	uint16_t h1 = (uint16_t)(hash & 0x0000ffff);
