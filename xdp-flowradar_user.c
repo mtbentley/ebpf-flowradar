@@ -56,6 +56,14 @@ static int bpf_fs_check_path(const char *path)
 	return err;
 }
 
+void maybe_use_old_map(struct bpf_map_data *map, int idx) {
+    char *path = map_pins[idx].path;
+    int existing_fd = bpf_obj_get(path);
+
+    if (existing_fd > 0) { // There's an old map to use! yay!
+        map->fd = existing_fd;
+    }
+}
 
 int main(int argc, char *argv[]) {
     char filename[256];
@@ -75,7 +83,7 @@ int main(int argc, char *argv[]) {
     snprintf(filename, sizeof(filename), "%s.o", argv[0]);
 
     // Load the bpf file.  The fd will end up in prog_fd[0]
-    if (load_bpf_file(filename)) {
+    if (load_bpf_file_fixup_map(filename, maybe_use_old_map)) {
         fprintf(
             stderr,
             "ERR: failed to load file %s: %s\n",
@@ -105,14 +113,16 @@ int main(int argc, char *argv[]) {
         if (bpf_fs_check_path(map_pins[i].path) < 0)
             return 1;
 
-        // Try to pin the i-th map_fd to the filesystem
-        if (bpf_obj_pin(map_fd[i], map_pins[i].path)) {
-            fprintf(
-                stderr,
-                "ERR: Cannot pin map %s: err(%d):%s\n",
-                map_pins[i].path, errno, strerror(errno)
-            );
-            return 1;
+        if (bpf_obj_get(map_pins[i].path) <= 0) {
+            // Try to pin the i-th map_fd to the filesystem
+            if (bpf_obj_pin(map_fd[i], map_pins[i].path)) {
+                fprintf(
+                    stderr,
+                    "ERR: Cannot pin map %s: err(%d):%s\n",
+                    map_pins[i].path, errno, strerror(errno)
+                );
+                return 1;
+            }
         }
     }
 
