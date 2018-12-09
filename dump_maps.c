@@ -45,7 +45,7 @@ void dump_hash(int map_fd, cJSON *map_data, int index) {
 }
 
 
-int main(int argc, char *argv[]) {
+int main() {
     int fd, i;
     for (i=0; i<NUM_MAP_PINS; i++) {
         fd = bpf_obj_get(map_pins[i].path);
