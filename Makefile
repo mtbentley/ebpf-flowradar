@@ -49,7 +49,7 @@ clean: unload
 	rm dump_maps || true
 
 setup: clean
-	sudo ln -s /proc/$(shell pgrep -f h1)/ns/net /var/run/netns/h1
+	sudo ln -s /proc/$(shell pgrep -f mininet:h1)/ns/net /var/run/netns/h1
 
 dump: xdp-flowradar.o
 	llvm-objdump -S xdp-flowradar.o
