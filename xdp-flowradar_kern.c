@@ -50,7 +50,7 @@ struct vlan_hdr {
 
 // 0
 struct bpf_map_def SEC("maps") bloomfilter = {
-    .type = BPF_MAP_TYPE_ARRAY,
+    .type = BPF_MAP_TYPE_PERCPU_ARRAY,
     .key_size = sizeof(uint32_t),
     .value_size = ELEM_SIZE,
     .max_entries = BF_SIZE,
@@ -58,7 +58,7 @@ struct bpf_map_def SEC("maps") bloomfilter = {
 
 // 1
 struct bpf_map_def SEC("maps") flow_info = {
-    .type = BPF_MAP_TYPE_ARRAY,
+    .type = BPF_MAP_TYPE_PERCPU_ARRAY,
     .key_size = sizeof(uint32_t),
     .value_size = sizeof(struct flow_info),
     .max_entries = 65536,
@@ -67,7 +67,7 @@ struct bpf_map_def SEC("maps") flow_info = {
 /* A bunch of maps.  They are just counters for testing */
 // 2
 struct bpf_map_def SEC("maps") eth_proto_count = {
-	.type = BPF_MAP_TYPE_HASH,
+	.type = BPF_MAP_TYPE_PERCPU_HASH,
 	.key_size = sizeof(uint16_t),
 	.value_size = sizeof(uint64_t),
 	.max_entries = 64,
@@ -75,7 +75,7 @@ struct bpf_map_def SEC("maps") eth_proto_count = {
 
 // 3
 struct bpf_map_def SEC("maps") ip_proto_count = {
-	.type = BPF_MAP_TYPE_HASH,
+	.type = BPF_MAP_TYPE_PERCPU_HASH,
 	.key_size = sizeof(uint16_t),
 	.value_size = sizeof(uint64_t),
 	.max_entries = 64,
@@ -83,7 +83,7 @@ struct bpf_map_def SEC("maps") ip_proto_count = {
 
 // 4
 struct bpf_map_def SEC("maps") sport_count = {
-	.type = BPF_MAP_TYPE_HASH,
+	.type = BPF_MAP_TYPE_PERCPU_HASH,
 	.key_size = sizeof(uint16_t),
 	.value_size = sizeof(uint64_t),
 	.max_entries = 64,
@@ -91,7 +91,7 @@ struct bpf_map_def SEC("maps") sport_count = {
 
 // 5
 struct bpf_map_def SEC("maps") dport_count = {
-	.type = BPF_MAP_TYPE_HASH,
+	.type = BPF_MAP_TYPE_PERCPU_HASH,
 	.key_size = sizeof(uint16_t),
 	.value_size = sizeof(uint64_t),
 	.max_entries = 64,
@@ -99,7 +99,7 @@ struct bpf_map_def SEC("maps") dport_count = {
 
 // 6
 struct bpf_map_def SEC("maps") sip_count = {
-	.type = BPF_MAP_TYPE_HASH,
+	.type = BPF_MAP_TYPE_PERCPU_HASH,
 	.key_size = sizeof(uint32_t),
 	.value_size = sizeof(uint64_t),
 	.max_entries = 64,
@@ -107,7 +107,7 @@ struct bpf_map_def SEC("maps") sip_count = {
 
 // 7
 struct bpf_map_def SEC("maps") dip_count = {
-	.type = BPF_MAP_TYPE_HASH,
+	.type = BPF_MAP_TYPE_PERCPU_HASH,
 	.key_size = sizeof(uint32_t),
 	.value_size = sizeof(uint64_t),
 	.max_entries = 64,
@@ -115,7 +115,7 @@ struct bpf_map_def SEC("maps") dip_count = {
 
 // 8
 struct bpf_map_def SEC("maps") host_info_map = {
-    .type = BPF_MAP_TYPE_ARRAY,
+    .type = BPF_MAP_TYPE_PERCPU_ARRAY,
     .key_size = sizeof(uint32_t),
     .value_size = sizeof(struct host_info),
     .max_entries = 1,
@@ -396,7 +396,7 @@ void increment_map(struct bpf_map_def *map, void *key)
 	long *value;
 	value = bpf_map_lookup_elem(map, key);
 	if (value) {
-		__sync_fetch_and_add(value, 1);
+        *value += 1;
 	} else {
 		long v;
 		v = 1;
@@ -472,7 +472,7 @@ int xdp_pass(struct xdp_md *ctx)
     int zero = 0;
     hi = bpf_map_lookup_elem(&host_info_map, &zero);
     if (hi)
-        host = hi->host;
+        host = *(uint16_t *)hi;
 	uint16_t hashes[NUM_HASHES];
     int any_zero = 0;
 #pragma unroll

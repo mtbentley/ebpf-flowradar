@@ -5,7 +5,7 @@
 #define NUM_MAP_PINS 9
 
 struct __attribute__((__packed__)) host_info {
-    uint16_t host;
+    uint64_t host;
 };
 
 struct map_pin_info {
@@ -47,7 +47,7 @@ int format_short_hex(void *data, char *buf, int len) {
 
 int format_host_info(void *data, char *buf, int len) {
     struct host_info *hi = data;
-    return snprintf(buf, len, "host=0x%x", hi->host);
+    return snprintf(buf, len, "host=0x%lx", (unsigned long)hi->host);
 }
 
 int format_flow_info(void *data, char *buf, int len) {

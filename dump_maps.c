@@ -2,6 +2,7 @@
 #include "bpf_load.h"
 #include "common.h"
 #include "cjson/cJSON.h"
+#include "bpf_util.h"
 
 #include <linux/bpf.h>
 #include <stdio.h>
@@ -14,34 +15,51 @@ int map_pin_fds[NUM_MAP_PINS];
 #define NUM_VALUE_MAX 128
 char key_name[KEY_NAME_MAX];
 char num_value[NUM_VALUE_MAX];
+char num_str[8];
 
 void dump_hash(int map_fd, cJSON *map_data, int index) {
     uint32_t key = -1, next_key;
-    uint64_t value;
+    unsigned int nr_cpus = bpf_num_possible_cpus();
+    unsigned int i;
+    uint64_t values[nr_cpus];
+    cJSON *cpu_objects[nr_cpus];
+
+    for (i=0; i<nr_cpus; i++)
+        cpu_objects[i] = cJSON_CreateObject();
+
 
     while (bpf_map_get_next_key(map_fd, &key, &next_key) == 0) {
         key = next_key;
-        if ((bpf_map_lookup_elem(map_fd, &key, &value)) != 0) {
+        if ((bpf_map_lookup_elem(map_fd, &key, &values)) != 0) {
             fprintf(
                 stderr,
                 "ERR: failed to read key %x from map(%d): %s\n",
                 key, errno, strerror(errno)
             );
         }
-        if (value) {
-            if ((map_pins[index].format_key)(&key, key_name, KEY_NAME_MAX) <= 0)
-                continue;
-            if ((map_pins[index].format_value)(&value, num_value, NUM_VALUE_MAX) <= 0)
-                continue;
+        for (i=0; i<nr_cpus; i++) {
+            if (values[i]) {
+                if ((map_pins[index].format_key)(&key, key_name, KEY_NAME_MAX) <= 0)
+                    continue;
+                if ((map_pins[index].format_value)(
+                        &values[i], num_value, NUM_VALUE_MAX
+                    ) <= 0)
+                    continue;
 
-            if (cJSON_AddStringToObject(map_data, key_name, num_value) == NULL)
-                fprintf(
-                    stderr,
-                    "ERR: Failed to add key(value) %x(%lu) to json\n",
-                    key, value
-                );
+                if (cJSON_AddStringToObject(cpu_objects[i], key_name, num_value) == NULL)
+                    fprintf(
+                        stderr,
+                        "ERR: Failed to add key(value) %x(%lu) to json\n",
+                        key, values[i]
+                    );
+            }
         }
     }
+
+    for (i=0; i<nr_cpus; i++) {
+        snprintf(num_str, 8, "%d", i);
+        cJSON_AddItemToObject(map_data, num_str, cpu_objects[i]);
+     }
 }
 
 

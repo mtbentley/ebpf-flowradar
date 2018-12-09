@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 #include "bpf_load.h"
 #include "common.h"
+#include "bpf_util.h"
 
 #include <linux/bpf.h>
 
@@ -72,6 +73,7 @@ int main(int argc, char *argv[]) {
     char *ifname;
     char *nspath;
     int nsfd;
+    unsigned int nr_cpus = bpf_num_possible_cpus();
 
     if (argc < 4) {
         fprintf(stderr, "Usage: %s <ifname> <ns-path> <host-num> [reset-maps]\n",
@@ -148,6 +150,13 @@ int main(int argc, char *argv[]) {
     }
 
     int host_info_fd = bpf_obj_get(map_pins[8].path);
+    uint64_t host_nums[nr_cpus];
+    memset(host_nums, 0, sizeof(host_nums));
+
+    for (unsigned int i=0; i<nr_cpus; i++) {
+        host_nums[i] = host_num;
+    }
+
     if (host_info_fd <= 0) {
         fprintf(
             stderr,
@@ -156,7 +165,7 @@ int main(int argc, char *argv[]) {
         );
     } else {
         uint32_t key = 0;
-        bpf_map_update_elem(host_info_fd, &key, &host_num, 0);
+        bpf_map_update_elem(host_info_fd, &key, host_nums, 0);
     }
 
     nsfd = open(nspath, O_RDONLY);
