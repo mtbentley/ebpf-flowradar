@@ -16,7 +16,7 @@ char key_name[KEY_NAME_MAX];
 char num_value[NUM_VALUE_MAX];
 
 void dump_hash(int map_fd, cJSON *map_data, int index) {
-    uint32_t key = 0, next_key;
+    uint32_t key = -1, next_key;
     uint64_t value;
 
     while (bpf_map_get_next_key(map_fd, &key, &next_key) == 0) {

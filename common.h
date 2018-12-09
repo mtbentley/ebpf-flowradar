@@ -2,7 +2,11 @@
 #include <linux/types.h>
 #include <stdio.h>
 
-#define NUM_MAP_PINS 8
+#define NUM_MAP_PINS 9
+
+struct __attribute__((__packed__)) host_info {
+    uint16_t host;
+};
 
 struct map_pin_info {
     char *name;
@@ -41,6 +45,11 @@ int format_short_hex(void *data, char *buf, int len) {
     return snprintf(buf, len, "0x%04hx", (unsigned short)*d);
 }
 
+int format_host_info(void *data, char *buf, int len) {
+    struct host_info *hi = data;
+    return snprintf(buf, len, "host=0x%x", hi->host);
+}
+
 int format_flow_info(void *data, char *buf, int len) {
     int c;
     char *curr = buf;
@@ -66,7 +75,7 @@ int format_flow_info(void *data, char *buf, int len) {
     curr = buf + c;
     c += snprintf(
         curr, len-c,
-        "flow_count=0x%x,packet_count=0x%x\n",
+        "flow_count=0x%x,packet_count=0x%x",
         fi->flow_count, fi->packet_count
     );
     return c;
@@ -119,6 +128,12 @@ struct map_pin_info map_pins[NUM_MAP_PINS] = {
         .name = "dip_count",
         .path = "/sys/fs/bpf/dip_count",
         .format_value = format_long_hex,
+        .format_key = format_int_hex,
+    },
+    {
+        .name = "host_info",
+        .path = "/sys/fs/bpf/host_info",
+        .format_value = format_host_info,
         .format_key = format_int_hex,
     },
 };

@@ -15,6 +15,7 @@
 #include <sys/vfs.h>
 #include <libgen.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 
 #ifndef BPF_FS_MAGIC
@@ -72,13 +73,33 @@ int main(int argc, char *argv[]) {
     char *nspath;
     int nsfd;
 
-    if (argc < 3) {
-        fprintf(stderr, "Usage: %s <ifname> <ns-path>\n", argv[0]);
+    if (argc < 4) {
+        fprintf(stderr, "Usage: %s <ifname> <ns-path> <host-num> [reset-maps]\n",
+            argv[0]);
         return 1;
     }
 
     ifname = argv[1];
     nspath = argv[2];
+    uint16_t host_num = atoi(argv[3]);
+
+    int reset_maps = 0;
+    if (argc > 4)
+        if (strcmp(argv[4], "yes") || strcmp(argv[4], "1"))
+            reset_maps = 1;
+
+    if (reset_maps) {
+        printf("Resetting maps...\n");
+        for (int i=0; i<NUM_MAP_PINS; i++) {
+            if (unlink(map_pins[i].path)) {
+                fprintf(
+                    stderr,
+                    "WARN: failed to unlink %s(%d): %s\n",
+                    map_pins[i].path, errno, strerror(errno)
+                );
+            }
+        }
+    }
 
     snprintf(filename, sizeof(filename), "%s.o", argv[0]);
 
@@ -124,6 +145,18 @@ int main(int argc, char *argv[]) {
                 return 1;
             }
         }
+    }
+
+    int host_info_fd = bpf_obj_get(map_pins[8].path);
+    if (host_info_fd <= 0) {
+        fprintf(
+            stderr,
+            "WARN: Could not open host info map(%d): %s\n",
+            errno, strerror(errno)
+        );
+    } else {
+        uint32_t key = 0;
+        bpf_map_update_elem(host_info_fd, &key, &host_num, 0);
     }
 
     nsfd = open(nspath, O_RDONLY);

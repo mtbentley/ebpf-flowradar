@@ -113,6 +113,14 @@ struct bpf_map_def SEC("maps") dip_count = {
 	.max_entries = 64,
 };
 
+// 8
+struct bpf_map_def SEC("maps") host_info_map = {
+    .type = BPF_MAP_TYPE_ARRAY,
+    .key_size = sizeof(uint32_t),
+    .value_size = sizeof(struct host_info),
+    .max_entries = 1,
+};
+
 /* A simple hash function, based on rs hash here: http://www.partow.net/programming/hashfunctions/
  * Splits up ip addrs into two 16 bit uints and starts with k as a seed
  * Returns a 16 bit uint
@@ -464,11 +472,17 @@ int xdp_pass(struct xdp_md *ctx)
 	increment_map(&sip_count, &ft.saddr);
 	increment_map(&dip_count, &ft.daddr);
 
+    struct host_info *hi;
+    uint16_t host = 0;
+    int zero = 0;
+    hi = bpf_map_lookup_elem(&host_info_map, &zero);
+    if (hi)
+        host = hi->host;
 	uint16_t hashes[NUM_HASHES];
     int any_zero = 0;
 #pragma unroll
 	for (int i=0; i<NUM_HASHES; i++) {
-		hashes[i] = hash(0x1011, i, &ft);
+		hashes[i] = hash(host, i, &ft);
         if (!(test_bit(hashes[i], &bloomfilter)))
             any_zero = 1;
 	}
