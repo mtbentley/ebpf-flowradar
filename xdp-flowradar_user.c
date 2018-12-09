@@ -182,7 +182,7 @@ int main(int argc, char *argv[]) {
     // Lookup the interface index
     ifindex = if_nametoindex(ifname);
     if (ifindex == 0) {
-        fprintf(stderr, "ERR: unknown ifname(%d): %s", errno, strerror(errno));
+        fprintf(stderr, "ERR: unknown ifname(%d): %s\n", errno, strerror(errno));
         return 1;
     }
 
