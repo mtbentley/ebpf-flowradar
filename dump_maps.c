@@ -11,12 +11,13 @@
 
 int map_pin_fds[NUM_MAP_PINS];
 #define KEY_NAME_MAX 32
+#define NUM_VALUE_MAX 128
 char key_name[KEY_NAME_MAX];
+char num_value[NUM_VALUE_MAX];
 
-void dump_hash(int map_fd, cJSON *map_data) {
+void dump_hash(int map_fd, cJSON *map_data, int index) {
     uint32_t key = 0, next_key;
     uint64_t value;
-
 
     while (bpf_map_get_next_key(map_fd, &key, &next_key) == 0) {
         key = next_key;
@@ -28,9 +29,12 @@ void dump_hash(int map_fd, cJSON *map_data) {
             );
         }
         if (value) {
-            if (snprintf(key_name, KEY_NAME_MAX, "0x%04x", key) <= 0)
+            if ((map_pins[index].format_key)(&key, key_name, KEY_NAME_MAX) <= 0)
                 continue;
-            if (cJSON_AddNumberToObject(map_data, key_name, (double)value) == NULL)
+            if ((map_pins[index].format_value)(&value, num_value, NUM_VALUE_MAX) <= 0)
+                continue;
+
+            if (cJSON_AddStringToObject(map_data, key_name, num_value) == NULL)
                 fprintf(
                     stderr,
                     "ERR: Failed to add key(value) %x(%lu) to json\n",
@@ -44,11 +48,11 @@ void dump_hash(int map_fd, cJSON *map_data) {
 int main(int argc, char *argv[]) {
     int fd, i;
     for (i=0; i<NUM_MAP_PINS; i++) {
-        fd = bpf_obj_get(map_pins[i]);
+        fd = bpf_obj_get(map_pins[i].path);
         if (fd <= 0) {
             fprintf(stderr,
                 "ERR: Failed to load map pin %s(%d): %s\n",
-                map_pins[i], errno, strerror(errno)
+                map_pins[i].path, errno, strerror(errno)
             );
             return 1;
         }
@@ -59,8 +63,8 @@ int main(int argc, char *argv[]) {
     cJSON *data = cJSON_CreateObject();
 
     for (i=0; i<NUM_MAP_PINS; i++) {
-        cJSON *map_data = cJSON_AddObjectToObject(data, map_pins[i]);
-        dump_hash(map_pin_fds[i], map_data);
+        cJSON *map_data = cJSON_AddObjectToObject(data, map_pins[i].name);
+        dump_hash(map_pin_fds[i], map_data, i);
     }
 
     string = cJSON_Print(data);

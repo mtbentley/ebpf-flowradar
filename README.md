@@ -130,7 +130,7 @@ Reasonable memory maximum: 16MB
 memory required ~= `m*20B` (B=bytes)  
 `16777216 = m*20`  
 `m = 838912`  
-Bloom filter bytes: 104864, `uint64_t`s: 13108 :o  
+Bloom filter bits: 104864, `uint64_t`s: 13108 :o  
 
 max flows: 8192?  
 `k = (838912/8192)*0.69 ~= 71`  
@@ -138,7 +138,7 @@ max flows: 8192?
 
 Actual reasonable bloom filter size: `2**16 = UINT16_MAX+1` ==> ~1.25MB  
 `m = 65536`  
-Bloom filter bytes: 65536, `uint64_t`s: 1024
+Bloom filter bits: 65536, `uint64_t`s: 1024
 
 max flows: 8192?  
 `k = (65536/8192)*ln(2) ~= 6`  

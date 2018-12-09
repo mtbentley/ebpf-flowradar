@@ -98,19 +98,19 @@ int main(int argc, char *argv[]) {
             fprintf(
                 stderr,
                 "ERR: map %d(%s) failed to load: %d\n",
-                i, map_pins[i], map_fd[i]
+                i, map_pins[i].path, map_fd[i]
             );
             return 1;
         }
-        if (bpf_fs_check_path(map_pins[i]) < 0)
+        if (bpf_fs_check_path(map_pins[i].path) < 0)
             return 1;
 
         // Try to pin the i-th map_fd to the filesystem
-        if (bpf_obj_pin(map_fd[i], map_pins[i])) {
+        if (bpf_obj_pin(map_fd[i], map_pins[i].path)) {
             fprintf(
                 stderr,
                 "ERR: Cannot pin map %s: err(%d):%s\n",
-                map_pins[i], errno, strerror(errno)
+                map_pins[i].path, errno, strerror(errno)
             );
             return 1;
         }

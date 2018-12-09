@@ -1,3 +1,4 @@
+#include "common.h"
 #include <linux/bpf.h>
 #include <linux/if_ether.h>
 #include <netinet/in.h>
@@ -11,7 +12,11 @@
 #include <linux/tcp.h>
 #include <linux/udp.h>
 
-#define NUM_HASHES 8
+#define NUM_HASHES 6
+#define BF_BITS (UINT16_MAX + 1)
+#define ELEM_SIZE sizeof(uint64_t)
+#define BITS_PER_ELEM (ELEM_SIZE*8)
+#define BF_SIZE (BF_BITS/BITS_PER_ELEM)
 
 /* Disable 8021Q and 8021AD eth tags for now, since we don't really
  * have a way to test them
@@ -43,8 +48,24 @@ struct vlan_hdr {
 	__be16 h_vlan_encapsulated_proto;
 };
 
-/* A bunch of maps.  They are just counters for testing */
 // 0
+struct bpf_map_def SEC("maps") bloomfilter = {
+    .type = BPF_MAP_TYPE_ARRAY,
+    .key_size = sizeof(uint32_t),
+    .value_size = ELEM_SIZE,
+    .max_entries = BF_SIZE,
+};
+
+// 1
+struct bpf_map_def SEC("maps") flow_info = {
+    .type = BPF_MAP_TYPE_ARRAY,
+    .key_size = sizeof(uint32_t),
+    .value_size = sizeof(struct flow_info),
+    .max_entries = 65536,
+};
+
+/* A bunch of maps.  They are just counters for testing */
+// 2
 struct bpf_map_def SEC("maps") eth_proto_count = {
 	.type = BPF_MAP_TYPE_HASH,
 	.key_size = sizeof(uint16_t),
@@ -52,7 +73,7 @@ struct bpf_map_def SEC("maps") eth_proto_count = {
 	.max_entries = 64,
 };
 
-// 1
+// 3
 struct bpf_map_def SEC("maps") ip_proto_count = {
 	.type = BPF_MAP_TYPE_HASH,
 	.key_size = sizeof(uint16_t),
@@ -60,7 +81,7 @@ struct bpf_map_def SEC("maps") ip_proto_count = {
 	.max_entries = 64,
 };
 
-// 2
+// 4
 struct bpf_map_def SEC("maps") sport_count = {
 	.type = BPF_MAP_TYPE_HASH,
 	.key_size = sizeof(uint16_t),
@@ -68,7 +89,7 @@ struct bpf_map_def SEC("maps") sport_count = {
 	.max_entries = 64,
 };
 
-// 3
+// 5
 struct bpf_map_def SEC("maps") dport_count = {
 	.type = BPF_MAP_TYPE_HASH,
 	.key_size = sizeof(uint16_t),
@@ -76,7 +97,7 @@ struct bpf_map_def SEC("maps") dport_count = {
 	.max_entries = 64,
 };
 
-// 4
+// 6
 struct bpf_map_def SEC("maps") sip_count = {
 	.type = BPF_MAP_TYPE_HASH,
 	.key_size = sizeof(uint32_t),
@@ -84,21 +105,12 @@ struct bpf_map_def SEC("maps") sip_count = {
 	.max_entries = 64,
 };
 
-// 5
+// 7
 struct bpf_map_def SEC("maps") dip_count = {
 	.type = BPF_MAP_TYPE_HASH,
 	.key_size = sizeof(uint32_t),
 	.value_size = sizeof(uint64_t),
 	.max_entries = 64,
-};
-
-/* Information on the "five tuple" used to identify flows */
-struct five_tuple {
-	__be32 saddr;
-	__be32 daddr;
-	uint16_t sport;
-	uint16_t dport;
-	uint8_t proto;
 };
 
 /* A simple hash function, based on rs hash here: http://www.partow.net/programming/hashfunctions/
@@ -142,6 +154,7 @@ uint16_t hash(uint16_t host, uint8_t k, struct five_tuple *ft) {
 
 /* For when we only need a uint8 hash
  */
+/*
 static __always_inline
 uint8_t hash8(uint16_t host, uint8_t k, struct five_tuple *ft) {
 	uint16_t h16 = hash(host, k, ft);
@@ -149,6 +162,72 @@ uint8_t hash8(uint16_t host, uint8_t k, struct five_tuple *ft) {
 
 	return h8;
 }
+*/
+
+static __always_inline
+void set_bit(uint16_t bit, struct bpf_map_def *map) {
+    unsigned int elem = BF_SIZE - (bit/BITS_PER_ELEM + 1);
+    elem = elem % BF_SIZE;
+
+    uint64_t mask = (uint64_t)0x1 << (bit % BITS_PER_ELEM);
+
+	uint64_t *value;
+	value = bpf_map_lookup_elem(map, &elem);
+	if (value) {
+        *value |= mask;
+        // TODO: BUG: this is not atomic, and will break on multicore systems
+	}
+}
+
+static __always_inline
+uint64_t test_bit(uint16_t bit, struct bpf_map_def *map) {
+    unsigned int elem = BF_SIZE - (bit/BITS_PER_ELEM + 1);
+    elem = elem % BF_SIZE;
+
+    uint64_t mask = (uint64_t)0x1 << (bit % BITS_PER_ELEM);
+
+	uint64_t *value;
+	value = bpf_map_lookup_elem(map, &elem);
+
+    if (value)
+        return *value & mask;
+    else
+        return 0;
+}
+
+static __always_inline
+void add_flow(uint16_t index, struct five_tuple *ft, struct bpf_map_def *map) {
+    struct flow_info *fi;
+    char *ptr_old;
+    char *ptr_new;
+
+    fi = bpf_map_lookup_elem(map, &index);
+
+    if (!fi)
+        return;
+
+#pragma unroll
+    for (unsigned long i=0; i<sizeof(struct five_tuple); i++) {
+        ptr_old = (char *)(&(fi->ft))+i;
+        ptr_new = (char *)(ft)+i;
+        *ptr_old ^= *ptr_new;
+    }
+
+    fi->flow_count += 1;
+}
+
+static __always_inline
+void increment_packet_count(uint64_t index, struct bpf_map_def *map) {
+    struct flow_info *fi;
+
+    fi = bpf_map_lookup_elem(map, &index);
+
+    if (!fi)
+        return;
+
+    fi->packet_count += 1;
+}
+
 
 /* Parse ethernet headers
  * Takes the header and end location, and puts the proto and l3_offset in
@@ -385,12 +464,27 @@ int xdp_pass(struct xdp_md *ctx)
 	increment_map(&sip_count, &ft.saddr);
 	increment_map(&dip_count, &ft.daddr);
 
-	uint8_t hashes[NUM_HASHES];
+	uint16_t hashes[NUM_HASHES];
+    int any_zero = 0;
 #pragma unroll
 	for (int i=0; i<NUM_HASHES; i++) {
-		hashes[i] = hash8(0x1011, i, &ft);
-		bpf_debug("Hash %i: 0x%x\n", i, hashes[i]);
+		hashes[i] = hash(0x1011, i, &ft);
+        if (!(test_bit(hashes[i], &bloomfilter)))
+            any_zero = 1;
 	}
+
+    if (any_zero) {
+#pragma unroll
+        for (int i=0; i<NUM_HASHES; i++) {
+            set_bit(hashes[i], &bloomfilter);
+            add_flow(hashes[i], &ft, &flow_info);
+        }
+    }
+
+#pragma unroll
+    for (int i=0; i<NUM_HASHES; i++) {
+        increment_packet_count(hashes[i], &flow_info);
+    }
 
 	return XDP_PASS;
 }

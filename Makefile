@@ -18,10 +18,10 @@ cjson/cJSON.o:
 $(LINUX_SOURCE)/tools/lib/bpf/libbpf.so:
 	make -C $(LINUX_SOURCE)/tools/lib/bpf/
 
-xdp-flowradar.o: xdp-flowradar_kern.c bpf_helpers.h
+xdp-flowradar.o: xdp-flowradar_kern.c bpf_helpers.h common.h
 	clang $(CFLAGS) -target bpf -c xdp-flowradar_kern.c -o xdp-flowradar.o
 
-xdp-flowradar: xdp-flowradar_user.c xdp-flowradar.o $(OBJECTS) common.h
+xdp-flowradar: xdp-flowradar_user.c $(OBJECTS) common.h
 	clang $(CFLAGS) $(IFLAGS) $(LDFLAGS) $(OBJECTS) xdp-flowradar_user.c -o xdp-flowradar
 
 dump_maps: dump_maps.c common.h cjson/cJSON.o
@@ -45,8 +45,8 @@ clean: unload
 	rm test-hash || true
 	rm xdp-flowradar || true
 	rm bpf_load.o || true
-	sudo bash -c "rm /sys/fs/bpf/{{eth,ip}_proto,{s,d}{port,ip}}_count || true"
-	rm dump_mpas || true
+	sudo bash -c "rm /sys/fs/bpf/{{{eth,ip}_proto,{s,d}{port,ip}}_count,bloomfilter,flow_info} || true"
+	rm dump_maps || true
 
 setup: clean
 	sudo ln -s /proc/$(shell pgrep -f h1)/ns/net /var/run/netns/h1
