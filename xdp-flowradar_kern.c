@@ -136,15 +136,15 @@ uint16_t hash(uint16_t host, uint8_t k, struct five_tuple *ft) {
 
 	uint32_t hash = k;
 #pragma unroll
-    for (i=0; i<sizeof(struct five_tuple); i++) {
-        ptr = (void *)ft + i;
+    for (i=0; i<sizeof(uint16_t); i++) {
+        ptr = (void *)&host + i;
         hash = hash * a + *ptr;
         a = a * b;
     }
 
 #pragma unroll
-    for (i=0; i<sizeof(uint16_t); i++) {
-        ptr = (void *)&host + i;
+    for (i=0; i<sizeof(struct five_tuple); i++) {
+        ptr = (void *)ft + i;
         hash = hash * a + *ptr;
         a = a * b;
     }
