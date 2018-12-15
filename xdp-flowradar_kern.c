@@ -178,7 +178,6 @@ void set_bit(uint16_t bit, struct bpf_map_def *map) {
 	value = bpf_map_lookup_elem(map, &elem);
 	if (value) {
         *value |= mask;
-        // TODO: BUG: this is not atomic, and will break on multicore systems
 	}
 }
 
