@@ -3,6 +3,9 @@
 #include <stdio.h>
 
 #define NUM_MAP_PINS 9
+#define MAX_PATH_FORMATTED 128
+
+char bpf_pin_folder[MAX_PATH_FORMATTED];
 
 struct __attribute__((__packed__)) host_info {
     uint64_t host;
@@ -10,9 +13,9 @@ struct __attribute__((__packed__)) host_info {
 
 struct map_pin_info {
     char *name;
-    char *path;
     int (*format_value)(void *, char *, int);
     int (*format_key)(void *, char *, int);
+    char path_formatted[MAX_PATH_FORMATTED];
 };
 
 /* Information on the "five tuple" used to identify flows */
@@ -84,56 +87,59 @@ int format_flow_info(void *data, char *buf, int len) {
 struct map_pin_info map_pins[NUM_MAP_PINS] = {
     {
         .name = "bloomfilter",
-        .path = "/sys/fs/bpf/bloomfilter",
         .format_value = format_long_hex,
         .format_key = format_int_hex,
     },
     {
         .name = "flow_info",
-        .path = "/sys/fs/bpf/flow_info",
         .format_value = format_flow_info,
         .format_key = format_int_hex,
     },
     {
         .name = "eth_proto_count",
-        .path = "/sys/fs/bpf/eth_proto_count",
         .format_value = format_long_hex,
         .format_key = format_short_hex,
     },
     {
         .name = "ip_proto_count",
-        .path = "/sys/fs/bpf/ip_proto_count",
         .format_value = format_long_hex,
         .format_key = format_short_hex,
     },
     {
         .name = "sport_count",
-        .path = "/sys/fs/bpf/sport_count",
         .format_value = format_long_hex,
         .format_key = format_short_hex,
     },
     {
         .name = "dport_count",
-        .path = "/sys/fs/bpf/dport_count",
         .format_value = format_long_hex,
         .format_key = format_short_hex,
     },
     {
         .name = "sip_count",
-        .path = "/sys/fs/bpf/sip_count",
         .format_value = format_long_hex,
         .format_key = format_int_hex,
     },
     {
         .name = "dip_count",
-        .path = "/sys/fs/bpf/dip_count",
         .format_value = format_long_hex,
         .format_key = format_int_hex,
     },
     {
         .name = "host_info",
-        .path = "/sys/fs/bpf/host_info",
         .format_value = format_host_info,
         .format_key = format_int_hex,
     },
 };
+
+void format_map_paths(uint16_t host_num) {
+    for (int i=0; i<NUM_MAP_PINS; i++) {
+        if (snprintf(
+            map_pins[i].path_formatted, MAX_PATH_FORMATTED,
+            "/sys/fs/bpf/%d/%s", host_num, map_pins[i].name
+        ) <= 0) {
+            fprintf(stderr, "WARN: failed to format map path\n");
+        }
+    }
+    snprintf(bpf_pin_folder, MAX_PATH_FORMATTED, "/sys/fs/bpf/%d", host_num);
+}

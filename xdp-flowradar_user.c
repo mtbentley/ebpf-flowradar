@@ -59,7 +59,7 @@ static int bpf_fs_check_path(const char *path)
 }
 
 void maybe_use_old_map(struct bpf_map_data *map, int idx) {
-    char *path = map_pins[idx].path;
+    char *path = map_pins[idx].path_formatted;
     int existing_fd = bpf_obj_get(path);
 
     if (existing_fd > 0) { // There's an old map to use! yay!
@@ -85,6 +85,8 @@ int main(int argc, char *argv[]) {
     nspath = argv[2];
     uint16_t host_num = atoi(argv[3]);
 
+    format_map_paths(host_num);
+
     int reset_maps = 0;
     if (argc > 4)
         if (strcmp(argv[4], "yes") || strcmp(argv[4], "1"))
@@ -93,11 +95,11 @@ int main(int argc, char *argv[]) {
     if (reset_maps) {
         printf("Resetting maps...\n");
         for (int i=0; i<NUM_MAP_PINS; i++) {
-            if (unlink(map_pins[i].path)) {
+            if (unlink(map_pins[i].path_formatted)) {
                 fprintf(
                     stderr,
                     "WARN: failed to unlink %s(%d): %s\n",
-                    map_pins[i].path, errno, strerror(errno)
+                    map_pins[i].path_formatted, errno, strerror(errno)
                 );
             }
         }
@@ -124,32 +126,33 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    mkdir(bpf_pin_folder, 0x700);
     for (int i=0; i<NUM_MAP_PINS; i++) {
         if (map_fd[i] <= 0) {
             fprintf(
                 stderr,
                 "ERR: map %d(%s) failed to load: %d\n",
-                i, map_pins[i].path, map_fd[i]
+                i, map_pins[i].path_formatted, map_fd[i]
             );
             return 1;
         }
-        if (bpf_fs_check_path(map_pins[i].path) < 0)
+        if (bpf_fs_check_path(map_pins[i].path_formatted) < 0)
             return 1;
 
-        if (bpf_obj_get(map_pins[i].path) <= 0) {
+        if (bpf_obj_get(map_pins[i].path_formatted) <= 0) {
             // Try to pin the i-th map_fd to the filesystem
-            if (bpf_obj_pin(map_fd[i], map_pins[i].path)) {
+            if (bpf_obj_pin(map_fd[i], map_pins[i].path_formatted)) {
                 fprintf(
                     stderr,
                     "ERR: Cannot pin map %s: err(%d):%s\n",
-                    map_pins[i].path, errno, strerror(errno)
+                    map_pins[i].path_formatted, errno, strerror(errno)
                 );
                 return 1;
             }
         }
     }
 
-    int host_info_fd = bpf_obj_get(map_pins[8].path);
+    int host_info_fd = bpf_obj_get(map_pins[8].path_formatted);
     uint64_t host_nums[nr_cpus];
     memset(host_nums, 0, sizeof(host_nums));
 
