@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0 */
+// From linux.git/samples/bpf/bpf_load.h
 #ifndef __BPF_LOAD_H
 #define __BPF_LOAD_H
 

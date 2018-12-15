@@ -40,13 +40,13 @@ unload:
 	sudo ip netns exec h1 ip l set dev h1-eth0 xdp off || true
 
 clean: unload
-	sudo rm /var/run/netns/h1 || true
-	rm xdp-flowradar.o || true
-	rm test-hash || true
-	rm xdp-flowradar || true
-	rm bpf_load.o || true
-	sudo bash -c "rm /sys/fs/bpf/{{{eth,ip}_proto,{s,d}{port,ip}}_count,bloomfilter,flow_info,host_info} || true"
-	rm dump_maps || true
+	sudo rm -f /var/run/netns/h1
+	rm -f xdp-flowradar.o
+	rm -f test-hash
+	rm -f xdp-flowradar
+	rm -f bpf_load.o
+	sudo bash -c "rm -f /sys/fs/bpf/{{{eth,ip}_proto,{s,d}{port,ip}}_count,bloomfilter,flow_info,host_info}"
+	rm -f dump_maps
 
 setup: clean
 	sudo ln -s /proc/$(shell pgrep -f mininet:h1)/ns/net /var/run/netns/h1
