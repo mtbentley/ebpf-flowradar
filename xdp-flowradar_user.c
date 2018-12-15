@@ -75,8 +75,8 @@ int main(int argc, char *argv[]) {
     int nsfd;
     unsigned int nr_cpus = bpf_num_possible_cpus();
 
-    if (argc < 4) {
-        fprintf(stderr, "Usage: %s <ifname> <ns-path> <host-num> [reset-maps]\n",
+    if (argc < 5) {
+        fprintf(stderr, "Usage: %s <ifname> <ns-path> <host-num> <save-prefix> [reset-maps]\n",
             argv[0]);
         return 1;
     }
@@ -84,12 +84,14 @@ int main(int argc, char *argv[]) {
     ifname = argv[1];
     nspath = argv[2];
     uint16_t host_num = atoi(argv[3]);
+    uint8_t save_prefix = atoi(argv[4]);
 
-    format_map_paths(host_num);
+    if (format_map_paths(host_num, save_prefix))
+        return 1;
 
     int reset_maps = 0;
-    if (argc > 4)
-        if (strcmp(argv[4], "yes") || strcmp(argv[4], "1"))
+    if (argc > 5)
+        if (strcmp(argv[5], "yes") || strcmp(argv[5], "1"))
             reset_maps = 1;
 
     if (reset_maps) {
@@ -126,7 +128,31 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    mkdir(bpf_pin_folder, 0x700);
+    char *dirc, *dname;
+    dirc = strdup(bpf_pin_folder);
+    dname = dirname(dirc);
+    if (mkdir(dname, 0x700)) {
+        if (errno != EEXIST) {
+            fprintf(
+                stderr,
+                "ERR: failed to mkdir %s: %s\n",
+                dname, strerror(errno)
+            );
+            return 1;
+        }
+    }
+    free(dname);
+    free(dirc);
+    if (mkdir(bpf_pin_folder, 0x700)) {
+        if (errno != EEXIST) {
+            fprintf(
+                stderr,
+                "ERR: failed to mkdir %s: %s\n",
+                bpf_pin_folder, strerror(errno)
+            );
+            return 1;
+        }
+    }
     for (int i=0; i<NUM_MAP_PINS; i++) {
         if (map_fd[i] <= 0) {
             fprintf(

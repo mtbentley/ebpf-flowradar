@@ -132,14 +132,27 @@ struct map_pin_info map_pins[NUM_MAP_PINS] = {
     },
 };
 
-void format_map_paths(uint16_t host_num) {
+int format_map_paths(uint16_t host_num, uint8_t prefix_num) {
+    char prefix_str[MAX_PATH_FORMATTED];
     for (int i=0; i<NUM_MAP_PINS; i++) {
         if (snprintf(
-            map_pins[i].path_formatted, MAX_PATH_FORMATTED,
-            "/sys/fs/bpf/%d/%s", host_num, map_pins[i].name
+            prefix_str, MAX_PATH_FORMATTED,
+            "/sys/fs/bpf/%hhu/%u/", prefix_num, host_num
         ) <= 0) {
             fprintf(stderr, "WARN: failed to format map path\n");
+            return -1;
+        }
+        if (snprintf(
+            map_pins[i].path_formatted, MAX_PATH_FORMATTED,
+            "%s%s", prefix_str, map_pins[i].name
+        ) <= 0) {
+            fprintf(stderr, "WARN: falied to format map path\n");
+            return -1;
         }
     }
-    snprintf(bpf_pin_folder, MAX_PATH_FORMATTED, "/sys/fs/bpf/%d", host_num);
+    snprintf(
+        bpf_pin_folder, MAX_PATH_FORMATTED, "/sys/fs/bpf/%hhu/%u",
+        prefix_num, host_num);
+
+    return 0;
 }

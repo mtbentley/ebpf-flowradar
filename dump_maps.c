@@ -66,14 +66,16 @@ void dump_hash(int map_fd, cJSON *map_data, int index) {
 int main(int argc, char *argv[]) {
     int fd, i;
 
-    if (argc < 2) {
-        fprintf(stderr, "Usage: %s <host-num>\n", argv[0]);
+    if (argc < 3) {
+        fprintf(stderr, "Usage: %s <host-num> <save-prefix>\n", argv[0]);
         return 1;
     }
 
     uint16_t host_num = atoi(argv[1]);
+    uint8_t save_prefix = atoi(argv[2]);
 
-    format_map_paths(host_num);
+    if (format_map_paths(host_num, save_prefix))
+        return 1;
 
     for (i=0; i<NUM_MAP_PINS; i++) {
         fd = bpf_obj_get(map_pins[i].path_formatted);

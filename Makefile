@@ -45,7 +45,7 @@ clean: unload
 	rm -f test-hash
 	rm -f xdp-flowradar
 	rm -f bpf_load.o
-	sudo bash -c "rm -f /sys/fs/bpf/*/{{{eth,ip}_proto,{s,d}{port,ip}}_count,bloomfilter,flow_info,host_info}"
+	sudo bash -c "rm -f /sys/fs/bpf/*/*/{{{eth,ip}_proto,{s,d}{port,ip}}_count,bloomfilter,flow_info,host_info}"
 	rm -f dump_maps
 
 setup: clean
