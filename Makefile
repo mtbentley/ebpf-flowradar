@@ -40,12 +40,12 @@ unload:
 
 clean: unload
 	sudo rm -f /var/run/netns/h1
-	rm -f xdp-flowradar.o
 	rm -f test-hash
 	rm -f xdp-flowradar
-	rm -f bpf_load.o
 	sudo bash -c "rm -f /sys/fs/bpf/*/*/{{{eth,ip}_proto,{s,d}{port,ip}}_count,bloomfilter,flow_info,host_info}"
 	rm -f dump_maps
+	rm -f *.o
+	rm -f *.so
 
 setup: clean
 	sudo ln -s /proc/$(shell pgrep -f "mininet:h1$$")/ns/net /var/run/netns/h1
