@@ -10,7 +10,7 @@ LDFLAGS:=-lelf
 OBJECTS:=$(LINUX_SOURCE)/tools/lib/bpf/libbpf.so bpf_load.o
 
 CFLAGS:=-g -O2 -Wall -Wextra
-.PHONY: all load unload clean setup 
+.PHONY: all load unload clean setup py-c-hash
 
 all: xdp-flowradar.o xdp-flowradar dump_maps py-c-hash
 
