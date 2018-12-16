@@ -1,3 +1,5 @@
+SHELL := /bin/bash
+
 # NOTE: this requires a kernel with tools/lib/bpf bulit (for libbpf.so)
 LINUX_SOURCE=../linux
 # ^^ is there a better way to do this??
@@ -8,9 +10,9 @@ LDFLAGS:=-lelf
 OBJECTS:=$(LINUX_SOURCE)/tools/lib/bpf/libbpf.so bpf_load.o
 
 CFLAGS:=-g -O2 -Wall -Wextra
-.PHONY: all load unload clean setup
+.PHONY: all load unload clean setup 
 
-all: xdp-flowradar.o xdp-flowradar dump_maps
+all: xdp-flowradar.o xdp-flowradar dump_maps py-c-hash
 
 cjson/cJSON.o:
 	make -C cjson
@@ -50,3 +52,6 @@ setup: clean
 
 dump: xdp-flowradar.o
 	llvm-objdump -S xdp-flowradar.o
+
+py-c-hash: venv/ chash.c setup.py
+	source venv/bin/activate && python setup.py build_ext --inplace
