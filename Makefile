@@ -7,7 +7,7 @@ LINUX_SOURCE=../linux
 IFLAGS:=-I$(LINUX_SOURCE)/tools/lib -I$(LINUX_SOURCE)/tools/perf -I$(LINUX_SOURCE)/tools/include
 LDFLAGS:=-lelf
 
-OBJECTS:=$(LINUX_SOURCE)/tools/lib/bpf/libbpf.so bpf_load.o
+OBJECTS:=$(LINUX_SOURCE)/tools/lib/bpf/libbpf.so bpf_load.o cjson/cJSON.o
 
 CFLAGS:=-g -O2 -Wall -Wextra
 .PHONY: all load unload clean setup py-c-hash
@@ -20,14 +20,14 @@ cjson/cJSON.o:
 $(LINUX_SOURCE)/tools/lib/bpf/libbpf.so:
 	make -C $(LINUX_SOURCE)/tools/lib/bpf/
 
-xdp-flowradar.o: xdp-flowradar_kern.c bpf_helpers.h common.h
+xdp-flowradar.o: xdp-flowradar_kern.c bpf_helpers.h common.h data.h
 	clang $(CFLAGS) -target bpf -c xdp-flowradar_kern.c -o xdp-flowradar.o
 
-xdp-flowradar: xdp-flowradar_user.c $(OBJECTS) common.h
+xdp-flowradar: xdp-flowradar_user.c $(OBJECTS) common.h data.h
 	clang $(CFLAGS) $(IFLAGS) $(LDFLAGS) $(OBJECTS) xdp-flowradar_user.c -o xdp-flowradar
 
-dump_maps: dump_maps.c common.h cjson/cJSON.o
-	clang $(CFLAGS) $(IFLAGS) $(LDFLAGS) $(OBJECTS) cjson/cJSON.o dump_maps.c -o dump_maps
+dump_maps: dump_maps.c common.h $(OBJECTS) data.h
+	clang $(CFLAGS) $(IFLAGS) $(LDFLAGS) $(OBJECTS) dump_maps.c -o dump_maps
 
 bpf_load.o: bpf_load.c bpf_load.h
 	clang $(CFLAGS) $(IFLAGS) -c bpf_load.c -o bpf_load.o

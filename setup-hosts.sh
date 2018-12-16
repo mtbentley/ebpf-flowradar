@@ -15,7 +15,7 @@ host_num=10101
 for host in ${hosts[@]}; do
     echo "Setting up host $host with host num $host_num and prefix $prefix_num"
     pid=$(pgrep -f "mininet:${host}$")
-    sudo ln -s "/proc/${pid}/ns/net" "/run/netns/${host}"
+    sudo ln -s "/proc/${pid}/ns/net" "/run/netns/${host}" || true
 
     sudo ./xdp-flowradar "${host}-eth0" "/run/netns/${host}" $host_num $prefix_num
     host_num=$((host_num+1))
