@@ -39,10 +39,8 @@ unload:
 	sudo ip netns exec h1 ip l set dev h1-eth0 xdp off || true
 
 clean: unload
-	sudo rm -f /var/run/netns/h1
 	rm -f test-hash
 	rm -f xdp-flowradar
-	sudo bash -c "rm -f /sys/fs/bpf/*/*/{{{eth,ip}_proto,{s,d}{port,ip}}_count,bloomfilter,flow_info,host_info}"
 	rm -f dump_maps
 	rm -f *.o
 	rm -f *.so
