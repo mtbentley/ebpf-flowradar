@@ -53,5 +53,7 @@ setup: clean
 dump: xdp-flowradar.o
 	llvm-objdump -S xdp-flowradar.o
 
-py-c-hash: venv/ chash.c setup.py
+py-c-hash: cHash.cpython-36m-x86_64-linux-gnu.so
+
+cHash.cpython-36m-x86_64-linux-gnu.so: venv/ chash.c setup.py
 	source venv/bin/activate && python setup.py build_ext --inplace
