@@ -17,6 +17,8 @@
 #include <libgen.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 
 
 #ifndef BPF_FS_MAGIC
@@ -68,6 +70,7 @@ void maybe_use_old_map(struct bpf_map_data *map, int idx) {
 }
 
 int main(int argc, char *argv[]) {
+    struct rlimit r = {RLIM_INFINITY, RLIM_INFINITY};
     char filename[256];
     int ifindex;
     char *ifname;
@@ -88,6 +91,11 @@ int main(int argc, char *argv[]) {
 
     if (format_map_paths(host_num, save_prefix))
         return 1;
+
+    if (setrlimit(RLIMIT_MEMLOCK, &r)) {
+        fprintf(stderr, "ERR: failed to set rlimit\n");
+        return 1;
+    }
 
     int reset_maps = 0;
     if (argc > 5)

@@ -33,9 +33,6 @@ bpf_load.o: bpf_load.c bpf_load.h
 test-hash: test-hash.c xdp-flowradar_kern.c
 	clang $(CFLAGS) test-hash.c -o test-hash
 
-load: xdp-flowradar.o unload
-	sudo ip netns exec h1 ip l set dev h1-eth0 xdp obj xdp-flowradar.o verbose
-
 unload:
 	sudo ip netns exec h1 ip l set dev h1-eth0 xdp off || true
 
@@ -49,7 +46,7 @@ clean: unload
 	rm -f dump_maps
 
 setup: clean
-	sudo ln -s /proc/$(shell pgrep -f mininet:h1)/ns/net /var/run/netns/h1
+	sudo ln -s /proc/$(shell pgrep -f "mininet:h1$$")/ns/net /var/run/netns/h1
 
 dump: xdp-flowradar.o
 	llvm-objdump -S xdp-flowradar.o
