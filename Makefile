@@ -1,3 +1,5 @@
+SHELL := /bin/bash
+
 # NOTE: this requires a kernel with tools/lib/bpf bulit (for libbpf.so)
 LINUX_SOURCE=../ubuntu-cosmic
 # ^^ is there a better way to do this??
@@ -8,9 +10,9 @@ LDFLAGS:=-lelf
 OBJECTS:=$(LINUX_SOURCE)/tools/lib/bpf/libbpf.so bpf_load.o
 
 CFLAGS:=-g -O2 -Wall -Wextra
-.PHONY: all load unload clean setup
+.PHONY: all load unload clean setup py-c-hash
 
-all: xdp-flowradar.o xdp-flowradar dump_maps
+all: xdp-flowradar.o xdp-flowradar dump_maps py-c-hash
 
 cjson/cJSON.o:
 	make -C cjson
@@ -36,14 +38,12 @@ test-hash: test-hash.c xdp-flowradar_kern.c
 unload:
 	sudo ip netns exec h1 ip l set dev h1-eth0 xdp off || true
 
-clean: unload
-	sudo rm -f /var/run/netns/h1
-	rm -f xdp-flowradar.o
+clean:
 	rm -f test-hash
 	rm -f xdp-flowradar
-	rm -f bpf_load.o
-	sudo bash -c "rm -f /sys/fs/bpf/*/*/{{{eth,ip}_proto,{s,d}{port,ip}}_count,bloomfilter,flow_info,host_info}"
 	rm -f dump_maps
+	rm -f *.o
+	rm -f *.so
 
 setup: clean
 	sudo ln -s /proc/$(shell pgrep -f "mininet:h1$$")/ns/net /var/run/netns/h1
@@ -60,3 +60,8 @@ activate:
 
 aggregate: activate
 	./aggregate.py dumped.json parsed.json | jq -R
+
+py-c-hash: cHash.cpython-36m-x86_64-linux-gnu.so
+
+cHash.cpython-36m-x86_64-linux-gnu.so: venv/ chash.c setup.py
+	source venv/bin/activate && python setup.py build_ext --inplace

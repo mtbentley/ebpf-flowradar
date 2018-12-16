@@ -92,6 +92,12 @@ TODO
 https://patchwork.ozlabs.org/patch/702198/ )
 - IPv6 support
 
+Python c hash
+---
+1. `make py-c-hash`
+2. python: `from cHash import c_hash`
+3. python: `[hex(c_hash(0x1000a,0x100000a,0x1389,0xcb66,0x6,10101,i)) for i in range(6)]`
+
 FlowRadar
 ---
 The paper: https://www.usenix.org/system/files/conference/nsdi16/nsdi16-paper-li-yuliang.pdf
