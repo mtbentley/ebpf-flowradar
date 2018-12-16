@@ -38,7 +38,7 @@ test-hash: test-hash.c xdp-flowradar_kern.c
 unload:
 	sudo ip netns exec h1 ip l set dev h1-eth0 xdp off || true
 
-clean: unload
+clean:
 	rm -f test-hash
 	rm -f xdp-flowradar
 	rm -f dump_maps
