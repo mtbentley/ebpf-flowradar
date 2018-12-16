@@ -1,5 +1,5 @@
 # NOTE: this requires a kernel with tools/lib/bpf bulit (for libbpf.so)
-LINUX_SOURCE=../linux
+LINUX_SOURCE=../ubuntu-cosmic
 # ^^ is there a better way to do this??
 # Perhaps just copy the relevant files in?
 IFLAGS:=-I$(LINUX_SOURCE)/tools/lib -I$(LINUX_SOURCE)/tools/perf -I$(LINUX_SOURCE)/tools/include
@@ -50,3 +50,13 @@ setup: clean
 
 dump: xdp-flowradar.o
 	llvm-objdump -S xdp-flowradar.o
+
+activate:
+	python3 -m venv venv
+	( \
+		source venv/bin/activate; \
+		pip install -r requirements.txt; \
+	)
+
+aggregate: activate
+	./aggregate.py dumped.json parsed.json | jq -R
