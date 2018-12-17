@@ -8,6 +8,21 @@ Testing
 ---
 1. Run mininet: `sudo mn --topo tree,2,2`
 2. Setup the network namespace for h1: `make setup`
+3. Compile: `make`.  NOTE: this requires a checkout of the linux source at
+`../linux`.  You can override this with `make LINUX_SOURCE=/path/to/linux`
+4. Load the program: `sudo ./xdp-flowradar h1-eth0 /run/netns/h1`
+5. Monitor the output (from `bpf_debug()`): `sudo cat /sys/kernel/debug/tracing/trace_pipe`
+
+What this does: `make` builds the bpf program and the binary to load it.  
+The load program (`./xdp-flowradar`) loads the bpf program, pins the maps in
+`/sys/fs/bpf/<mapname>`, switches to the network namespace of the interface we
+want to attach to (`/run/netns/h1`), and attaches the program to the interface
+(`h1-eth0`).
+
+Testing (old way)
+---
+1. Run mininet: `sudo mn --topo tree,2,2`
+2. Setup the network namespace for h1: `make setup`
 3. Compile: `make`
 4. Load the program: `make load`. This is where you migth get verifier errors
 5. Monitor the output (from `bpf_debug()`): `sudo cat /sys/kernel/debug/tracing/trace_pipe`
@@ -22,6 +37,9 @@ sudo apt install -y build-essential libelf-dev binutils-dev make gcc \
 libssl-dev bc libelf-dev libcap-dev clang gcc-multilib llvm libncurses5-dev \
 git pkg-config libmnl0 bison flex graphviz mininet
 ```
+
+kernel source: You will need the kernel source checked out to `../linux` (or
+override it, as mentioned in the testing section).
 
 bpftool is nice:
 1. Get kernel source
@@ -74,6 +92,12 @@ TODO
 https://patchwork.ozlabs.org/patch/702198/ )
 - IPv6 support
 
+Python c hash
+---
+1. `make py-c-hash`
+2. python: `from cHash import c_hash`
+3. python: `[hex(c_hash(0x1000a,0x100000a,0x1389,0xcb66,0x6,10101,i)) for i in range(6)]`
+
 FlowRadar
 ---
 The paper: https://www.usenix.org/system/files/conference/nsdi16/nsdi16-paper-li-yuliang.pdf
@@ -112,7 +136,7 @@ Reasonable memory maximum: 16MB
 memory required ~= `m*20B` (B=bytes)  
 `16777216 = m*20`  
 `m = 838912`  
-Bloom filter bytes: 104864, `uint64_t`s: 13108 :o  
+Bloom filter bits: 104864, `uint64_t`s: 13108 :o  
 
 max flows: 8192?  
 `k = (838912/8192)*0.69 ~= 71`  
@@ -120,7 +144,7 @@ max flows: 8192?
 
 Actual reasonable bloom filter size: `2**16 = UINT16_MAX+1` ==> ~1.25MB  
 `m = 65536`  
-Bloom filter bytes: 65536, `uint64_t`s: 1024
+Bloom filter bits: 65536, `uint64_t`s: 1024
 
 max flows: 8192?  
 `k = (65536/8192)*ln(2) ~= 6`  
