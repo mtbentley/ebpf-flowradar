@@ -19,12 +19,22 @@ def load_hosts(host_info):
 
 fields = {'saddr', 'daddr', 'sport', 'dport', 'proto'}
 def five_tuples_are_equal(flow1, flow2):
-    flow1_dict = json.loads(flow1)
-    flow2_dict = json.loads(flow2)
+    # print('Checking if 5 flows are equal;....')
+    # print(flow1)
+    # print(flow2)
+    # print(type(flow1))
+    # print(type(flow2))
+    flow1_d = json.loads(flow1)
+    flow2_d = json.loads(flow2)
+    # print(f'Type of flow1 is {type(flow1_d)}')
+    # print(f'Type of flow2 is {type(flow2_d)}')
+
     for field in fields: 
-        if flow1_dict[field] != flow2_dict[field]:
-            #print(f'Flow1: {flow1} and {flow2} are different due to {field}')
+        if flow1_d[field] != flow2_d[field]:
+            # print(f'Flow1: {flow1_d} and {flow2_d} are different due to {field}')
+            # print(f'Specificaly, their fields were {flow1_d[field]} and {flow2_d[field]}')
             return False
+    # print('Flows were equal!')
     return True
 
 def flow_seen_in_flow_set(flow, flows):
@@ -40,30 +50,42 @@ def hex_flow_counts_to_integers(flow):
     return json.dumps(to_modify)
 
 def merge_flows(flow1, flow2):
-    print(flow1)
-    print(flow2)
-    print(type(flow1))
-    print(type(flow2))
+    # print('Merging flows')
+    # print(flow1)
+    # print(flow2)
+    # print(type(flow1))
+    # print(type(flow2))
     flow1_d = json.loads(flow1)
     flow2_d = json.loads(flow2)
-    print(type(flow1_d))
-    print(type(flow2_d))
+    # print(f'Type of flow1 is {type(flow1_d)}')
+    # print(f'Type of flow2 is {type(flow2_d)}')
     flow1_d['packet_count'] += flow2_d['packet_count']
     flow1_d['flow_count'] += flow2_d['flow_count']
-    return json.dumps(flow1)
+    return json.dumps(flow1_d)
 
 def merge_cpu_flows(cpu_flows):
     merged_flows = set()
     seen = set()
     cpu_flows_integers = set(map(hex_flow_counts_to_integers, cpu_flows))
+    # print(list(map(type, cpu_flows_integers)))
+    # print(f'cpu flows integers: {cpu_flows_integers}')
+    i = 0
+    i += 1
     for flow in cpu_flows_integers:
-        same_flows_different_cpus = filter(
+        # print(f'Processing flow {i}\n\n')
+        same_flows_different_cpus = set(filter(
                         lambda f: flow_seen_in_flow_set(f, seen),
                         cpu_flows_integers.difference(flow)
-                        )
-        merged_flow = flow
+                        ))
+        # print("Generated same flows different cpus")
+        # print(list(map(type, same_flows_different_cpus)))
+        # print(f'Number of matching flows: {len(same_flows_different_cpus)}')
+        merged_flow = f'{flow}'
         for matching_flow in same_flows_different_cpus:
+            # print(f'Passing into merge flows: {type(merged_flow)} and {type(matching_flow)}')
+            # print(f'With first: {merged_flow} and second: {matching_flow}')
             merged_flow = merge_flows(merged_flow, matching_flow)
+            # print(f'Adding to seen: {matching_flow} with type {type(matching_flow)}')
             seen.add(matching_flow)
 
         if not flow_seen_in_flow_set(flow, seen):
@@ -141,6 +163,7 @@ def singledecode(flow_info, hosts):
     print('All CPUs flows combined:')
     pp.pprint(all_cpus_identified_flows)
     print('\nAll merged flows:\n')
+    print(list(map(type, all_cpus_identified_flows)))
     pp.pprint(merge_cpu_flows(all_cpus_identified_flows))
 
 
