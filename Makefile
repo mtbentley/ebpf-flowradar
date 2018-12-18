@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 
 # NOTE: this requires a kernel with tools/lib/bpf bulit (for libbpf.so)
-LINUX_SOURCE=../ubuntu-cosmic
+LINUX_SOURCE=../linux
 # ^^ is there a better way to do this??
 # Perhaps just copy the relevant files in?
 IFLAGS:=-I$(LINUX_SOURCE)/tools/lib -I$(LINUX_SOURCE)/tools/perf -I$(LINUX_SOURCE)/tools/include
@@ -59,7 +59,7 @@ activate:
 	)
 
 aggregate: activate
-	./aggregate.py dumped.json parsed.json | jq -R
+	./aggregate.py dumped.json parsed.json
 
 py-c-hash: cHash.cpython-36m-x86_64-linux-gnu.so
 
