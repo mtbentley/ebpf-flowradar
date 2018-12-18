@@ -66,16 +66,15 @@ def merge_flows(flow1, flow2):
 def merge_cpu_flows(cpu_flows):
     merged_flows = set()
     seen = set()
-    cpu_flows_integers = set(map(hex_flow_counts_to_integers, cpu_flows))
     # print(list(map(type, cpu_flows_integers)))
     # print(f'cpu flows integers: {cpu_flows_integers}')
     i = 0
     i += 1
-    for flow in cpu_flows_integers:
+    for flow in cpu_flows:
         # print(f'Processing flow {i}\n\n')
         same_flows_different_cpus = set(filter(
                         lambda f: flow_seen_in_flow_set(f, seen),
-                        cpu_flows_integers.difference(flow)
+                        cpu_flows.difference(flow)
                         ))
         # print("Generated same flows different cpus")
         # print(list(map(type, same_flows_different_cpus)))
@@ -95,10 +94,11 @@ def merge_cpu_flows(cpu_flows):
 
 
 def singledecode(flow_info, hosts):
-    hash_count = 5
+    hash_count = 6
+    cpus = 4
     all_cpus_identified_flows = set()
-    for cpu in range(0,3):
-        print(f'Running for cpu={cpu}\n')
+    for cpu in range(0, cpus):
+        #print(f'Running for cpu={cpu}\n')
         identified_flows = set()
         merged_flows = flow_info[str(cpu)]
 
@@ -124,7 +124,7 @@ def singledecode(flow_info, hosts):
                 hashes = [
                     c_hash(saddr, daddr, sport, dport, proto, host, k)
                     # hex(c_hash(saddr, daddr, sport, dport, proto, host, k)) # hex version
-                    for k in range(0, hash_count+1)
+                    for k in range(0, hash_count)
                 ]
                 #print(f'The calculated five hashes for this were.....{hashes}')
                 given_hash_in_calculated = given_hash_as_int in hashes
@@ -154,17 +154,17 @@ def singledecode(flow_info, hosts):
             else:
                 print(f'Conflict detected for flow={flow_data}')
         #pp.pprint(usable_flows)
-        pp.pprint(identified_flows)
-        print('\n')
+        #pp.pprint(identified_flows)
+        #print('\n')
         all_cpus_identified_flows |= identified_flows
 
-    print('\n')
-    print('\n')
-    print('All CPUs flows combined:')
-    pp.pprint(all_cpus_identified_flows)
+    print('All CPUs flows:')
+    cpu_flows_integers = set(map(hex_flow_counts_to_integers, all_cpus_identified_flows))
+    pp.pprint(cpu_flows_integers)
     print('\nAll merged flows:\n')
-    print(list(map(type, all_cpus_identified_flows)))
-    pp.pprint(merge_cpu_flows(all_cpus_identified_flows))
+    merged_flows = merge_cpu_flows(cpu_flows_integers)
+    pp.pprint(merged_flows)
+
 
 
 
