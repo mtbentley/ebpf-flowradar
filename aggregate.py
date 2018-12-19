@@ -6,7 +6,6 @@ from cHash import c_hash
 
 pp = pprint.PrettyPrinter(indent=4)
 HASH_COUNT = 6
-CPUS = 4
 
 
 def csv_tuple_to_dict(csv):
@@ -49,10 +48,10 @@ def merge_cpu_flows(cpu_flows):
 
 def singledecode(flow_info, hosts):
     all_cpus_identified_flows = set()
-    for cpu in range(0, CPUS):
+    for cpu in flow_info.keys():
         identified_flows = set()
         merged_flows = flow_info[str(cpu)]
-        usable_flows = dict((hash_value, csv_tuple_to_dict(flow)) for hash_value, flow in merged_flows.items())
+        usable_flows = {hash_value:  csv_tuple_to_dict(flow) for hash_value, flow in merged_flows.items()}
 
         for hash_value, flow in usable_flows.items():
             if flow['flow_count'] == '0x1':
@@ -60,12 +59,13 @@ def singledecode(flow_info, hosts):
                 packet_count = int(flow['packet_count'], 16)
                 saddr, daddr = int(flow['saddr'], 16), int(flow['daddr'], 16)
                 sport, dport = int(flow['sport'], 16), int(flow['dport'], 16)
-                proto, host = int(flow['proto'], 16), int(hosts[cpu], 16)
+                proto, host = int(flow['proto'], 16), int(hosts[int(cpu)], 16)
                 fields = {'saddr': saddr, 'daddr': daddr, 'sport': sport, 'dport': dport, 'proto': proto}
                 hashes = [
                     c_hash(saddr, daddr, sport, dport, proto, host, k)
                     for k in range(0, HASH_COUNT)
                 ]
+                print(f'Hashes were: {list(map(hex, hashes))}')
                 if not int(hash_value, 16)  in hashes:
                     print(f'The given hash WAS NOT in the calculated hashes.')
                 for kth_hash in map(hex, hashes):
@@ -81,6 +81,8 @@ def singledecode(flow_info, hosts):
                 # Completed removing flow count from a bin, skip over this
                 pass
             else:
+                # unresolvable conflict (within a CPU) detected
+                # We should probably combine info from multiple CPUs here
                 # Here we need to handle flows with conflicts
                 # Probably repeat the loop with the remaining items?
                 print(f'Conflict detected for flow={flow}')
