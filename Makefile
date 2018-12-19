@@ -51,6 +51,16 @@ setup: clean
 dump: xdp-flowradar.o
 	llvm-objdump -S xdp-flowradar.o
 
+activate:
+	python3 -m venv venv
+	( \
+		source venv/bin/activate; \
+		pip install -r requirements.txt; \
+	)
+
+aggregate: activate
+	./aggregate.py dumped.json parsed.json
+
 py-c-hash: cHash.cpython-36m-x86_64-linux-gnu.so
 
 cHash.cpython-36m-x86_64-linux-gnu.so: venv/ chash.c setup.py
